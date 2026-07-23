@@ -37,7 +37,7 @@ async def upload_resume(
 
     step("PARSE_RESUME", file=file.filename)
     profile = parser.parse(dest)
-    step_done("PARSE_RESUME", name=profile.name, skills=len(profile.skills))
+    step_done("PARSE_RESUME", candidate_name=profile.name, skills=len(profile.skills))
     logger.info(
         "Parsed profile: name=%r skills=%d experience=%d projects=%d",
         profile.name,
@@ -64,8 +64,6 @@ async def upload_resume(
     db.add(resume)
 
     embedder = EmbeddingService()
-    from app.services.pipeline_log import step_done
-
     logger.info("Creating embedding for candidate_id=%s", candidate.id)
     embedding_id = embedder.upsert_candidate(candidate.id, build_profile_document(profile.model_dump()))
     candidate.embedding_id = embedding_id

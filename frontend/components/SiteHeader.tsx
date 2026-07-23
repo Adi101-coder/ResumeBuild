@@ -3,38 +3,52 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+const NAV = [
+  { href: "/", label: "Home" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#features", label: "Features" },
+  { href: "/#sources", label: "Sources" },
+  { href: "/dashboard", label: "Dashboard" },
+];
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const onHome = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-surface-950/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="group flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white shadow-lg shadow-brand-500/30">
+    <header className="sticky top-0 z-50 border-b border-ink-100 bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-10">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-sm font-bold text-white">
             RB
           </div>
-          <div>
-            <p className="font-semibold tracking-tight text-white group-hover:text-brand-200">
-              ResumeBuild
-            </p>
-                <p className="text-[11px] text-slate-500">AI job platform</p>
-          </div>
+          <span className="text-lg font-semibold tracking-tight text-ink">ResumeBuild</span>
         </Link>
 
-        <nav className="flex items-center gap-1">
-          <Link
-            href="/"
-            className={`nav-link ${pathname === "/" ? "nav-link-active" : ""}`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/dashboard"
-            className={`nav-link ${pathname === "/dashboard" ? "nav-link-active" : ""}`}
-          >
-            Applications
-          </Link>
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : item.href.startsWith("/#")
+                  ? onHome
+                  : pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-link ${active && item.href === pathname ? "nav-link-active" : ""}`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
+
+        <Link href="/#workspace" className="btn-dark shrink-0 text-xs md:text-sm">
+          Get started
+          <span aria-hidden>→</span>
+        </Link>
       </div>
     </header>
   );

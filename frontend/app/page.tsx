@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ScoreRing } from "@/components/ScoreRing";
-import { StatCard } from "@/components/StatCard";
+import { useEffect, useState } from "react";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+import { PhoneMockup } from "@/components/landing/PhoneMockup";
+import { WorkflowPanel } from "@/components/landing/WorkflowPanel";
 import {
-  createApplication,
   discoverJobs,
   getApplications,
   getJobSources,
-  logClick,
   matchJobs,
   personalizeResume,
+  createApplication,
   uploadResume,
   type CandidateProfile,
   type DiscoveryResult,
@@ -19,19 +19,38 @@ import {
   type MatchResult,
 } from "@/lib/api";
 
-const PIPELINE = [
-  { id: "upload", label: "Parse resume" },
-  { id: "discover", label: "Discover jobs" },
-  { id: "match", label: "Score matches" },
-  { id: "apply", label: "Track applications" },
+const FEATURES = [
+  {
+    title: "Smart Job Discovery",
+    desc: "Search terms built from your roles, skills, and experience — not generic tech keywords.",
+  },
+  {
+    title: "AI Match Scoring",
+    desc: "Every role scored 0–100 on skills, experience, embedding fit, and location alignment.",
+  },
+  {
+    title: "Application Tracking",
+    desc: "Personalize your resume per job and track every application from one dashboard.",
+  },
 ];
 
-const STEPS = [
-  { n: "01", title: "Upload resume", desc: "PDF → structured profile" },
-  { n: "02", title: "Discover jobs", desc: "Queries from your background" },
-  { n: "03", title: "Match & score", desc: "AI ranks 0–100" },
-  { n: "04", title: "Apply & track", desc: "Personalize + dashboard" },
+const DAILY_FEATURES = [
+  "Multi-source scraping from Greenhouse, Lever, RemoteOK, and more",
+  "Profile-based queries that adapt to any industry",
+  "ATS-aware resume personalization per role",
+  "Persistent application history and analytics",
 ];
+
+const FOCUS_BENEFITS = [
+  "One resume upload powers the entire pipeline",
+  "Parallel discovery across 12+ job sources",
+  "Threshold-based matching so you focus on strong fits",
+  "Export-ready PDFs tailored to each posting",
+];
+
+const TRUSTED = ["Stripe", "Figma", "Airbnb", "Netflix", "Datadog", "Cloudflare"];
+
+const COMMUNITY = ["AK", "JM", "SR", "PL", "DC", "EV", "TH", "NW"];
 
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
@@ -46,7 +65,9 @@ export default function HomePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void getJobSources().then((r) => setJobSources(r.sources)).catch(() => {});
+    void getJobSources()
+      .then((r) => setJobSources(r.sources))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -54,9 +75,9 @@ export default function HomePage() {
     if (stored) {
       const id = Number(stored);
       setCandidateId(id);
-      void getApplications(id).then((apps) =>
-        setAppliedIds(new Set(apps.map((a) => a.job_id))),
-      ).catch(() => {});
+      void getApplications(id)
+        .then((apps) => setAppliedIds(new Set(apps.map((a) => a.job_id))))
+        .catch(() => {});
     }
   }, []);
 
@@ -92,9 +113,8 @@ export default function HomePage() {
       const results = await matchJobs(candidateId);
       setMatches(results);
       setPipelineStep(4);
-      const sourceCount = disc.sources ? Object.keys(disc.sources).length : 0;
       setMessage(
-        `${disc.created} new jobs from ${sourceCount} sources · ${results.length} top matches`,
+        `${disc.total_jobs_in_db} jobs in pool (${disc.created} new) · ${results.length} top matches`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discovery failed");
@@ -132,352 +152,235 @@ export default function HomePage() {
     }
   }
 
-  const passedCount = matches.filter((m) => m.passed_threshold).length;
-  const initials = profile?.name
-    ? profile.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "?";
-
   return (
-    <div className="animate-fade-up space-y-12">
+    <>
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-surface-900 via-surface-900 to-brand-900/20 p-8 md:p-12">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-brand-500/20 blur-3xl animate-pulse-soft" />
-        <div className="pointer-events-none absolute -bottom-16 left-1/4 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
-
-        <div className="relative max-w-3xl space-y-6">
-          <span className="section-label">Multi-source job platform</span>
-          <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-5xl">
-            <span className="gradient-text">Your resume. Every job board.</span>
-            <span className="block text-slate-300">Matched, scored, and tracked.</span>
-          </h1>
-          <p className="text-lg leading-relaxed text-slate-400">
-            ResumeBuild pulls from Greenhouse, Lever, Ashby, YC, RemoteOK, Reddit, and more —
-            scores each role against your profile, and stores every application in your database.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="#upload" className="btn-primary">
-              Get started
-            </Link>
-            {candidateId && (
-              <Link href="/dashboard" className="btn-secondary">
-                View applications
+      <section className="relative overflow-hidden bg-white pb-20 pt-16 lg:pb-28 lg:pt-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="section-tag">Your search, in perfect rhythm</p>
+            <h1 className="mt-5 display-heading">
+              Apply smarter,{" "}
+              <span className="font-serif italic font-normal">not harder.</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-ink-500">
+              ResumeBuild parses your resume, discovers jobs across every major board, scores each
+              role against your profile, and tracks every application — all in one flow.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link href="#workspace" className="btn-dark">
+                Try it for free
+                <span aria-hidden>→</span>
               </Link>
-            )}
+              {candidateId && (
+                <Link href="/dashboard" className="btn-outline">
+                  View dashboard
+                </Link>
+              )}
+            </div>
           </div>
 
-          {candidateId && (
-            <p className="font-mono text-xs text-slate-500">
-              Session · candidate #{candidateId}
-            </p>
-          )}
+          <div className="mt-16 lg:mt-20">
+            <PhoneMockup />
+          </div>
         </div>
       </section>
 
-      {/* Pipeline progress */}
-      <section className="card">
-        <span className="section-label">Live pipeline</span>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {PIPELINE.map((step, i) => (
-            <div
-              key={step.id}
-              className={`progress-step ${
-                pipelineStep > i + 1
-                  ? "progress-step-done"
-                  : pipelineStep === i + 1
-                    ? "progress-step-active"
-                    : ""
-              }`}
-            >
-              <span className="font-mono text-xs opacity-60">{String(i + 1).padStart(2, "0")}</span>
-              <span>{step.label}</span>
+      {/* Split headline */}
+      <section id="how-it-works" className="scroll-mt-24 border-t border-ink-100 bg-white py-24">
+        <div className="mx-auto grid max-w-7xl gap-12 px-6 lg:grid-cols-2 lg:items-end lg:px-10">
+          <h2 className="display-heading lg:text-[3.25rem]">
+            Designed to help you land more{" "}
+            <span className="font-serif italic font-normal">with less effort.</span>
+          </h2>
+          <p className="text-lg leading-relaxed text-ink-500 lg:pb-2">
+            Stop copy-pasting the same resume into dozens of portals. Upload once, let the pipeline
+            find relevant roles, score them against your background, and personalize before you
+            apply.
+          </p>
+        </div>
+      </section>
+
+      {/* Feature grid */}
+      <section id="features" className="scroll-mt-24 bg-ink-50 py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid gap-8 md:grid-cols-3">
+            {FEATURES.map((feature, i) => (
+              <div key={feature.title} className="card-light">
+                <div className="feature-icon">{String(i + 1).padStart(2, "0")}</div>
+                <h3 className="mt-6 text-xl font-semibold text-ink">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-ink-500">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Work smarter every day */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-ink-100">
+              <div
+                className="absolute inset-0 bg-cover bg-center grayscale"
+                style={{
+                  backgroundImage:
+                    "url(https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=900&q=80&auto=format&fit=crop)",
+                }}
+              />
             </div>
-          ))}
+            <div>
+              <p className="section-tag">Every day</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-tight text-ink md:text-5xl">
+                Work smarter every day
+              </h2>
+              <div className="mt-10 grid gap-6 sm:grid-cols-2">
+                {DAILY_FEATURES.map((item) => (
+                  <div key={item} className="flex gap-3">
+                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-white">
+                      ✓
+                    </span>
+                    <p className="text-sm leading-relaxed text-ink-600">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Full-width CTA band */}
+      <section className="relative min-h-[420px] overflow-hidden bg-ink-900">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-40 grayscale"
+          style={{
+            backgroundImage:
+              "url(https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=1400&q=80&auto=format&fit=crop)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/80 to-transparent" />
+        <div className="relative mx-auto flex min-h-[420px] max-w-7xl items-center px-6 py-20 lg:px-10">
+          <div className="max-w-lg">
+            <h2 className="text-4xl font-bold leading-tight text-white md:text-5xl">
+              Ready to reclaim your job search?
+            </h2>
+            <p className="mt-4 text-lg text-white/60">
+              Upload your resume and get scored matches in under a minute.
+            </p>
+            <Link href="#workspace" className="btn-dark mt-8 bg-white text-ink hover:bg-ink-100">
+              Get started free
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Trusted by */}
+      <section className="border-b border-ink-100 bg-white py-16">
+        <div className="mx-auto max-w-7xl px-6 text-center lg:px-10">
+          <p className="section-tag">Trusted by teams at</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
+            {TRUSTED.map((name) => (
+              <span
+                key={name}
+                className="text-lg font-semibold tracking-wide text-ink-300 md:text-xl"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Community */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-7xl px-6 text-center lg:px-10">
+          <p className="section-tag">Community</p>
+          <h2 className="mx-auto mt-4 max-w-2xl text-4xl font-bold tracking-tight text-ink md:text-5xl">
+            Join a community of modern professionals
+          </h2>
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
+            {COMMUNITY.map((initials) => (
+              <div
+                key={initials}
+                className="flex h-16 w-16 items-center justify-center rounded-2xl border border-ink-200 bg-ink-50 text-sm font-bold text-ink"
+              >
+                {initials}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Built for focus */}
+      <section className="bg-ink-50 py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="section-tag">Built for focus</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-tight text-ink md:text-5xl">
+                Built for focus, made for real careers
+              </h2>
+              <ul className="mt-10 space-y-5">
+                {FOCUS_BENEFITS.map((item) => (
+                  <li key={item} className="flex gap-4 border-b border-ink-200 pb-5 last:border-0">
+                    <span className="feature-icon shrink-0">→</span>
+                    <p className="text-sm leading-relaxed text-ink-600">{item}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-ink-200">
+              <div
+                className="absolute inset-0 bg-cover bg-center grayscale"
+                style={{
+                  backgroundImage:
+                    "url(https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=900&q=80&auto=format&fit=crop)",
+                }}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Job sources */}
       {jobSources.length > 0 && (
-        <section className="card">
-          <span className="section-label">Job sources</span>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {jobSources.map((s) => (
-              <span
-                key={s.key}
-                className={`source-pill ${
-                  s.status === "active"
-                    ? "source-active"
-                    : s.status === "needs_credentials"
-                      ? "source-needs-auth"
-                      : "source-config"
-                }`}
-              >
-                {s.name}
-              </span>
-            ))}
+        <section id="sources" className="scroll-mt-24 border-t border-ink-100 bg-white py-20">
+          <div className="mx-auto max-w-7xl px-6 lg:px-10">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="section-tag">Integrations</p>
+              <h2 className="mt-4 text-3xl font-bold text-ink">Job sources we pull from</h2>
+            </div>
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              {jobSources.map((s) => (
+                <span key={s.key} className="source-pill">
+                  {s.name}
+                  {s.status === "needs_credentials" && " · needs key"}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      {/* Steps */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {STEPS.map((step) => (
-          <div key={step.n} className="card-hover group">
-            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10 font-mono text-sm font-semibold text-brand-300">
-              {step.n}
-            </div>
-            <h3 className="font-semibold text-white">{step.title}</h3>
-            <p className="mt-1 text-sm text-slate-500">{step.desc}</p>
-          </div>
-        ))}
-      </section>
+      {/* Interactive workflow */}
+      <WorkflowPanel
+        loading={loading}
+        candidateId={candidateId}
+        profile={profile}
+        discovery={discovery}
+        matches={matches}
+        appliedIds={appliedIds}
+        pipelineStep={pipelineStep}
+        message={message}
+        error={error}
+        onUpload={(file) => void handleUpload(file)}
+        onDiscoverAndMatch={() => void handleDiscoverAndMatch()}
+        onPersonalize={(jobId) => void handlePersonalize(jobId)}
+        onApply={(match) => void handleApply(match)}
+      />
 
-      {/* Alerts */}
-      {message && <div className="alert-success">{message}</div>}
-      {error && <div className="alert-error">{error}</div>}
-
-      {/* Upload + Discover */}
-      <section id="upload" className="grid gap-6 lg:grid-cols-2">
-        <div className="card space-y-5">
-          <div>
-            <span className="section-label">Step 1</span>
-            <h2 className="mt-2 text-xl font-semibold">Upload your resume</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              PDF · engineering, finance, healthcare, sales, design, and more.
-            </p>
-          </div>
-
-          <label className="upload-zone">
-            <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xs font-semibold uppercase tracking-widest text-slate-400">
-              PDF
-            </span>
-            <span className="font-medium text-slate-200">
-              {loading ? "Processing…" : "Drop PDF or click to browse"}
-            </span>
-            <span className="mt-1 text-xs text-slate-500">Max recommended · 2 pages</span>
-            <input
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              disabled={loading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleUpload(file);
-              }}
-            />
-          </label>
-
-          {profile && (
-            <div className="rounded-2xl border border-white/[0.06] bg-surface-950/80 p-5">
-              <div className="flex gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white">
-                  {initials}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold">{profile.name || "Candidate"}</p>
-                  <p className="truncate text-sm text-slate-400">{profile.email || "No email detected"}</p>
-                  {profile.location && (
-                    <p className="text-xs text-slate-500">{profile.location}</p>
-                  )}
-                </div>
-              </div>
-
-              {profile.preferred_roles && profile.preferred_roles.length > 0 && (
-                <div className="mt-4">
-                  <p className="section-label mb-2">Target roles</p>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.preferred_roles.map((r) => (
-                      <span key={r} className="badge border-brand-500/30 bg-brand-500/10 text-brand-200">
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <p className="section-label mb-2">Skills</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {profile.skills.slice(0, 14).map((skill) => (
-                    <span key={skill} className="badge-neutral">{skill}</span>
-                  ))}
-                  {profile.skills.length > 14 && (
-                    <span className="badge-neutral">+{profile.skills.length - 14}</span>
-                  )}
-                </div>
-              </div>
-
-              {profile.experience.length > 0 && (
-                <div className="mt-4 space-y-2 border-t border-white/[0.06] pt-4">
-                  <p className="section-label">Experience</p>
-                  {profile.experience.slice(0, 2).map((exp, i) => (
-                    <div key={i} className="text-sm">
-                      <p className="font-medium text-slate-200">{exp.role}</p>
-                      <p className="text-slate-500">{exp.company}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="card flex flex-col space-y-5">
-          <div>
-            <span className="section-label">Step 2</span>
-            <h2 className="mt-2 text-xl font-semibold">Discover & match</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Profile-driven queries across Greenhouse, Lever, Ashby, YC, RemoteOK, Reddit, and career pages.
-            </p>
-          </div>
-
-          {discovery?.sources && (
-            <div className="rounded-2xl border border-white/[0.06] bg-surface-950/80 p-4">
-              <p className="section-label mb-2">Source breakdown</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {Object.entries(discovery.sources).map(([name, stat]) => (
-                  <div key={name} className="flex justify-between text-xs">
-                    <span className="capitalize text-slate-400">{name}</span>
-                    <span className="font-mono text-slate-300">
-                      {stat.fetched} jobs{stat.errors ? " · error" : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {discovery && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <p className="font-semibold text-emerald-300">
-                +{discovery.created} jobs added
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                <span className="text-slate-500">Queries · </span>
-                {discovery.search_queries.slice(0, 6).join(" · ")}
-                {discovery.search_queries.length > 6 && " …"}
-              </p>
-              <p className="mt-2 font-mono text-xs text-slate-500">
-                {discovery.total_jobs_in_db} jobs in pool
-              </p>
-            </div>
-          )}
-
-          <button
-            className="btn-primary w-full py-3"
-            disabled={!candidateId || loading}
-            onClick={() => {
-              logClick("click_discover_and_match");
-              void handleDiscoverAndMatch();
-            }}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Discovering…
-              </span>
-            ) : (
-              "Discover & Match Jobs"
-            )}
-          </button>
-
-          {!candidateId && (
-            <p className="text-center text-xs text-slate-500">Upload a resume first</p>
-          )}
-
-          {matches.length > 0 && (
-            <div className="mt-auto grid grid-cols-3 gap-3">
-              <StatCard label="Matches" value={matches.length} />
-              <StatCard label="≥ 75%" value={passedCount} accent="text-emerald-400" />
-              <StatCard label="Applied" value={appliedIds.size} accent="text-brand-300" />
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Matches */}
-      {matches.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-end justify-between">
-            <div>
-              <span className="section-label">Results</span>
-              <h2 className="mt-2 text-2xl font-bold">Top job matches</h2>
-            </div>
-            <Link href="/dashboard" className="btn-ghost text-brand-400">
-              Track all →
-            </Link>
-          </div>
-
-          <div className="space-y-4">
-            {matches.map((match, i) => (
-              <article
-                key={match.job_id}
-                className="card-hover flex flex-col gap-4 p-5 lg:flex-row lg:items-center"
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                <ScoreRing score={match.score} passed={match.passed_threshold} />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-white">{match.title}</h3>
-                    {appliedIds.has(match.job_id) && (
-                      <span className="badge-pass">Applied</span>
-                    )}
-                    {!match.passed_threshold && (
-                      <span className="badge-fail">Below threshold</span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {match.company}
-                    {match.location && ` · ${match.location}`}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      ["Skills", match.skills_score],
-                      ["Experience", match.experience_score],
-                      ["Fit", match.embedding_score],
-                      ["Location", match.location_score],
-                    ].map(([label, val]) => (
-                      <span key={label as string} className="badge-neutral font-mono text-[10px]">
-                        {label} {val}%
-                      </span>
-                    ))}
-                  </div>
-
-                  {match.apply_url && (
-                    <a
-                      href={match.apply_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-xs text-brand-400 hover:text-brand-300"
-                    >
-                      View posting ↗
-                    </a>
-                  )}
-                </div>
-
-                <div className="flex shrink-0 flex-wrap gap-2 lg:flex-col xl:flex-row">
-                  <button
-                    className="btn-secondary min-w-[120px]"
-                    disabled={loading}
-                    onClick={() => void handlePersonalize(match.job_id)}
-                  >
-                    Personalize
-                  </button>
-                  <button
-                    className="btn-primary min-w-[120px]"
-                    disabled={loading || appliedIds.has(match.job_id)}
-                    onClick={() => void handleApply(match)}
-                  >
-                    {appliedIds.has(match.job_id) ? "Applied" : "Mark applied"}
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
+      <LandingFooter />
+    </>
   );
 }

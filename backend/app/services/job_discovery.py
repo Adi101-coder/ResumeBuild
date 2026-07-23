@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from sqlalchemy.orm import Session
@@ -12,6 +13,70 @@ from app.services.pipeline_log import step, step_done, step_fail
 from app.services.profile_queries import build_search_queries
 
 logger = logging.getLogger("app.discovery")
+
+# Board scrapers return all company jobs — location filtering happens in matching, not here.
+BOARD_SOURCES = frozenset({"greenhouse", "lever", "ashby", "career_page"})
+SCRAPER_TIMEOUT_SEC = 25.0
+JOBS_PER_SOURCE = 60
+JOBS_AFTER_FILTER = 40
+
+
+def _select_jobs_for_profile(jobs: list[dict], queries: list[str], limit: int) -> list[dict]:
+    """Prefer jobs matching profile queries; still return broader pool if matches are sparse."""
+    if not jobs:
+        return []
+    if not queries:
+        return jobs[:limit]
+
+    matched: list[dict] = []
+    rest: list[dict] = []
+    for job in jobs:
+        haystack = " ".join(
+            [
+                str(job.get("title", "")),
+                str(job.get("description", "")),
+                str(job.get("company", "")),
+                " ".join(str(s) for s in (job.get("skills") or [])),
+            ]
+        ).lower()
+        if any(q.lower() in haystack for q in queries):
+            matched.append(job)
+        else:
+            rest.append(job)
+
+    combined = matched + rest
+    return combined[:limit]
+
+
+async def _fetch_from_scraper(scraper, queries: list[str], location_hint: str) -> list[dict]:
+    """One HTTP fetch per scraper, then filter locally (avoids 7× duplicate API calls)."""
+    source = scraper.source_name
+    loc = location_hint if source not in BOARD_SOURCES else ""
+    raw = await scraper.fetch_jobs(query="", location=loc, limit=JOBS_PER_SOURCE)
+    return _select_jobs_for_profile(raw, queries, limit=JOBS_AFTER_FILTER)
+
+
+async def _scrape_one(scraper, queries: list[str], location_hint: str) -> tuple[str, list[dict], str | None]:
+    source = scraper.source_name
+    label = getattr(scraper, "board_token", None) or getattr(scraper, "company_slug", None) or source
+    step(f"SCRAPE_{source.upper()}", target=label)
+    try:
+        batch = await asyncio.wait_for(
+            _fetch_from_scraper(scraper, queries, location_hint),
+            timeout=SCRAPER_TIMEOUT_SEC,
+        )
+        step_done(f"SCRAPE_{source.upper()}", target=label, jobs=len(batch))
+        return source, batch, None
+    except asyncio.TimeoutError:
+        msg = f"timed out after {SCRAPER_TIMEOUT_SEC}s"
+        step_fail(f"SCRAPE_{source.upper()}", msg)
+        logger.warning("Source %s (%s) timed out", source, label)
+        return source, [], msg
+    except Exception as exc:
+        msg = str(exc) or repr(exc)
+        step_fail(f"SCRAPE_{source.upper()}", msg)
+        logger.exception("Source %s (%s) failed", source, label)
+        return source, [], msg
 
 
 async def discover_jobs_for_candidate(db: Session, candidate_id: int) -> dict:
@@ -28,27 +93,26 @@ async def discover_jobs_for_candidate(db: Session, candidate_id: int) -> dict:
 
     step("BUILD_QUERIES", count=len(queries), queries=",".join(queries[:8]))
     scrapers = build_scrapers()
-    step("INIT_SOURCES", total_sources=len(scrapers))
+    step(
+        "INIT_SOURCES",
+        total_sources=len(scrapers),
+        mode="parallel",
+        max_wait_sec=SCRAPER_TIMEOUT_SEC,
+    )
+
+    results = await asyncio.gather(
+        *[_scrape_one(scraper, queries, location_hint) for scraper in scrapers]
+    )
 
     scraped: list[dict] = []
     source_stats: dict[str, dict] = {}
 
-    for scraper in scrapers:
-        source = scraper.source_name
-        source_stats.setdefault(source, {"fetched": 0, "errors": 0})
-        try:
-            step(f"SCRAPE_{source.upper()}", query="profile+broad")
-            batch: list[dict] = []
-            for query in queries[:6]:
-                batch.extend(await scraper.fetch_jobs(query=query, location=location_hint, limit=15))
-            batch.extend(await scraper.fetch_jobs(query="", location=location_hint, limit=20))
-            source_stats[source]["fetched"] = len(batch)
-            scraped.extend(batch)
-            step_done(f"SCRAPE_{source.upper()}", jobs=len(batch))
-        except Exception as exc:
-            source_stats[source]["errors"] = 1
-            step_fail(f"SCRAPE_{source.upper()}", str(exc))
-            logger.exception("Source %s failed", source)
+    for source, batch, error in results:
+        stats = source_stats.setdefault(source, {"fetched": 0, "errors": 0})
+        stats["fetched"] += len(batch)
+        if error:
+            stats["errors"] += 1
+        scraped.extend(batch)
 
     step("DEDUPLICATE_AND_STORE", raw_jobs=len(scraped))
     created = 0
