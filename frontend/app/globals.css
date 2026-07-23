@@ -35,6 +35,10 @@ body {
     @apply btn text-ink-600 hover:bg-ink-100 hover:text-ink;
   }
 
+  .input {
+    @apply w-full rounded-2xl border border-ink-200 bg-white px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-ink-400 focus:border-ink focus:ring-2 focus:ring-ink/10;
+  }
+
   .card-light {
     @apply rounded-3xl border border-ink-200 bg-white p-6 shadow-card;
   }

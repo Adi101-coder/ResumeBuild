@@ -18,11 +18,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-ink-100 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-10">
-        <Link href="/" className="flex shrink-0 items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink text-sm font-bold text-white">
-            RB
-          </div>
-          <span className="text-lg font-semibold tracking-tight text-ink">ResumeBuild</span>
+        <Link href="/" className="shrink-0 text-lg font-semibold tracking-tight text-ink">
+          ResumeBuild
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

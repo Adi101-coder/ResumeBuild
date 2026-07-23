@@ -27,12 +27,7 @@ export function LandingFooter() {
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-bold text-ink">
-                RB
-              </div>
-              <span className="text-xl font-semibold">ResumeBuild</span>
-            </div>
+            <span className="text-xl font-semibold">ResumeBuild</span>
             <p className="max-w-sm text-sm leading-relaxed text-white/60">
               Parse your resume once. Discover jobs across every major board. Match, personalize,
               and track every application in one place.

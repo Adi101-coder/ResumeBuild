@@ -14,11 +14,11 @@ import {
 const STATUS_OPTIONS = ["applied", "interview", "offer", "rejected", "pending"];
 
 const STATUS_STYLES: Record<string, string> = {
-  applied: "border-blue-500/30 bg-blue-500/10 text-blue-200",
-  interview: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  offer: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  rejected: "border-rose-500/30 bg-rose-500/10 text-rose-200",
-  pending: "border-white/10 bg-white/5 text-slate-300",
+  applied: "border-ink-300 bg-ink-50 text-ink",
+  interview: "border-ink bg-ink text-white",
+  offer: "border-ink-400 bg-ink-100 text-ink",
+  rejected: "border-ink-200 bg-white text-ink-500",
+  pending: "border-ink-200 bg-ink-50 text-ink-600",
 };
 
 export default function DashboardPage() {
@@ -78,17 +78,18 @@ export default function DashboardPage() {
     filter === "all" ? applications : applications.filter((a) => a.status === filter);
 
   return (
-    <div className="animate-fade-up space-y-10">
-      <section className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-surface-900 to-brand-900/10 p-8">
+    <div className="mx-auto max-w-7xl animate-fade-up space-y-10 px-6 py-12 lg:px-10">
+      <section className="card-light">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <span className="section-label">Dashboard</span>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">Your applications</h1>
-            <p className="mt-2 max-w-lg text-slate-400">
-              Every application is saved to your database — status, match score, company, and apply link persist across sessions.
+            <p className="section-tag">Dashboard</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Your applications</h1>
+            <p className="mt-2 max-w-lg text-ink-500">
+              Every application is saved — status, match score, company, and apply link persist
+              across sessions.
             </p>
           </div>
-          <Link href="/" className="btn-secondary shrink-0">
+          <Link href="/" className="btn-outline shrink-0">
             ← Back to home
           </Link>
         </div>
@@ -100,7 +101,7 @@ export default function DashboardPage() {
             value={candidateId}
             onChange={(e) => setCandidateId(e.target.value)}
           />
-          <button className="btn-primary" disabled={loading} onClick={() => void handleLoad()}>
+          <button className="btn-dark" disabled={loading} onClick={() => void handleLoad()}>
             {loading ? "Loading…" : "Refresh"}
           </button>
         </div>
@@ -110,27 +111,15 @@ export default function DashboardPage() {
       {analytics && (
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total applied" value={analytics.total_applications} />
-          <StatCard
-            label="Interview rate"
-            value={`${analytics.interview_rate}%`}
-            accent="text-amber-400"
-          />
-          <StatCard
-            label="Avg match score"
-            value={analytics.average_ats_score ?? "—"}
-            accent="text-brand-300"
-          />
-          <StatCard
-            label="In interview"
-            value={analytics.status_breakdown.interview ?? 0}
-            accent="text-emerald-400"
-          />
+          <StatCard label="Interview rate" value={`${analytics.interview_rate}%`} />
+          <StatCard label="Avg match score" value={analytics.average_ats_score ?? "—"} />
+          <StatCard label="In interview" value={analytics.status_breakdown.interview ?? 0} />
         </section>
       )}
 
-      <section className="card">
+      <section className="card-light">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold">Application history</h2>
+          <h2 className="text-lg font-semibold text-ink">Application history</h2>
           <div className="flex flex-wrap gap-2">
             {["all", ...STATUS_OPTIONS].map((s) => (
               <button
@@ -145,31 +134,30 @@ export default function DashboardPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-500">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-ink-200 py-16 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-ink-200 bg-ink-50 text-sm font-semibold text-ink-500">
               0
             </div>
-            <p className="text-slate-400">No applications yet</p>
-            <p className="mt-2 max-w-sm text-sm text-slate-500">
+            <p className="text-ink-600">No applications yet</p>
+            <p className="mt-2 max-w-sm text-sm text-ink-400">
               Match jobs on the home page and click &quot;Mark applied&quot; to track them here.
             </p>
-            <Link href="/" className="btn-primary mt-6">
+            <Link href="/#workspace" className="btn-dark mt-6">
               Find jobs
             </Link>
           </div>
         ) : (
           <>
-            {/* Mobile cards */}
             <div className="space-y-3 lg:hidden">
               {filtered.map((app) => (
                 <div
                   key={app.id}
-                  className="rounded-2xl border border-white/[0.06] bg-surface-950/50 p-4"
+                  className="rounded-2xl border border-ink-200 bg-ink-50 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold">{app.job_title}</p>
-                      <p className="text-sm text-slate-400">{app.job_company}</p>
+                      <p className="font-semibold text-ink">{app.job_title}</p>
+                      <p className="text-sm text-ink-500">{app.job_company}</p>
                     </div>
                     {app.match_score != null && (
                       <span className="badge-neutral font-mono">{app.match_score}%</span>
@@ -182,7 +170,9 @@ export default function DashboardPage() {
                       onChange={(e) => void handleStatusChange(app.id, e.target.value)}
                     >
                       {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                     {app.apply_url && (
@@ -190,7 +180,7 @@ export default function DashboardPage() {
                         href={app.apply_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-brand-400"
+                        className="text-xs font-medium text-ink underline-offset-2 hover:underline"
                       >
                         Open ↗
                       </a>
@@ -200,11 +190,10 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Desktop table */}
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
                     <th className="pb-4 pr-4 font-medium">Role</th>
                     <th className="pb-4 pr-4 font-medium">Company</th>
                     <th className="pb-4 pr-4 font-medium">Location</th>
@@ -217,10 +206,10 @@ export default function DashboardPage() {
                 <tbody>
                   {filtered.map((app) => (
                     <tr key={app.id} className="table-row">
-                      <td className="py-4 pr-4 font-medium text-white">{app.job_title}</td>
-                      <td className="py-4 pr-4 text-slate-300">{app.job_company}</td>
-                      <td className="py-4 pr-4 text-slate-500">{app.job_location || "—"}</td>
-                      <td className="py-4 pr-4 font-mono text-brand-300">
+                      <td className="py-4 pr-4 font-medium text-ink">{app.job_title}</td>
+                      <td className="py-4 pr-4 text-ink-600">{app.job_company}</td>
+                      <td className="py-4 pr-4 text-ink-500">{app.job_location || "—"}</td>
+                      <td className="py-4 pr-4 font-mono text-ink">
                         {app.match_score != null ? `${app.match_score}%` : "—"}
                       </td>
                       <td className="py-4 pr-4">
@@ -230,14 +219,14 @@ export default function DashboardPage() {
                           onChange={(e) => void handleStatusChange(app.id, e.target.value)}
                         >
                           {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
                           ))}
                         </select>
                       </td>
-                      <td className="py-4 pr-4 text-slate-500">
-                        {app.applied_at
-                          ? new Date(app.applied_at).toLocaleDateString()
-                          : "—"}
+                      <td className="py-4 pr-4 text-ink-500">
+                        {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="py-4">
                         {app.apply_url ? (
@@ -245,7 +234,7 @@ export default function DashboardPage() {
                             href={app.apply_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-brand-400 hover:text-brand-300"
+                            className="font-medium text-ink underline-offset-2 hover:underline"
                           >
                             Open ↗
                           </a>
