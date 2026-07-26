@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import applications, events, jobs, matching, resumes
 from app.config import settings
 from app.database.models import Base
+from app.database.postgres import reset_postgres_sequences
 from app.database.session import engine
 from app.logging_config import setup_logging
 from app.middleware.request_logging import RequestLoggingMiddleware
@@ -31,6 +32,7 @@ def on_startup() -> None:
     logger.info("Database: %s", settings.database_url.split("@")[-1])
     logger.info("Storage: %s", settings.storage_path)
     Base.metadata.create_all(bind=engine)
+    reset_postgres_sequences(engine)
     logger.info("Database tables ready")
 
 
