@@ -76,7 +76,10 @@ export default function HomePage() {
       });
     void getJobSources()
       .then((r) => setJobSources(r.sources))
-      .catch(() => {});
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Failed to load job sources";
+        setError((prev) => prev || msg);
+      });
   }, []);
 
   useEffect(() => {

@@ -32,8 +32,12 @@ def on_startup() -> None:
     logger.info("Database: %s", settings.database_url.split("@")[-1])
     logger.info("Storage: %s", settings.storage_path)
     logger.info("CORS origins: %s", settings.cors_origin_list)
+    logger.info("Embedding fallback: %s", settings.embedding_fallback)
     Base.metadata.create_all(bind=engine)
-    reset_postgres_sequences(engine)
+    try:
+        reset_postgres_sequences(engine)
+    except Exception as exc:
+        logger.warning("Sequence reset skipped: %s", exc)
     logger.info("Database tables ready")
 
 

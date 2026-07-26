@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # Set true on Render free/starter to avoid OOM from downloading the ~90MB model.
+    embedding_fallback: bool = False
 
     storage_path: Path = BASE_DIR / "storage"
     templates_path: Path = BASE_DIR / "templates"

@@ -12,6 +12,11 @@ async function apiFetch(path: string, init?: RequestInit, timeoutMs = 120_000): 
       ...init,
       signal: controller.signal,
     });
+    if (res.status === 502 || res.status === 503) {
+      throw new Error(
+        `Backend unavailable (${res.status}). Render may be waking up or crashed — open ${API_URL}/health in a new tab, wait for ok, then retry.`,
+      );
+    }
     return res;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
@@ -19,12 +24,35 @@ async function apiFetch(path: string, init?: RequestInit, timeoutMs = 120_000): 
         `Backend timed out after ${timeoutMs / 1000}s (${API_URL}). Render free tier may be waking up — wait 1 minute and retry.`,
       );
     }
+    if (err instanceof Error && err.message.includes("Backend unavailable")) {
+      throw err;
+    }
     throw new Error(
-      `Cannot reach backend at ${API_URL}. Check NEXT_PUBLIC_API_URL on Vercel and that Render shows "Live".`,
+      `Cannot reach backend at ${API_URL}. If the browser shows a CORS error, the API is usually down (502) — open ${API_URL}/health first.`,
     );
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function apiFetchWithRetry(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = 120_000,
+  retries = 2,
+): Promise<Response> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await apiFetch(path, init, timeoutMs);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 4000 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError ?? new Error(`Request failed: ${path}`);
 }
 
 export type CandidateProfile = {
@@ -105,7 +133,7 @@ export function logClick(
 }
 
 export async function checkBackendHealth(): Promise<boolean> {
-  const res = await apiFetch("/health", undefined, 30_000);
+  const res = await apiFetchWithRetry("/health", undefined, 45_000, 2);
   return res.ok;
 }
 
@@ -126,7 +154,7 @@ export async function uploadResume(file: File) {
 }
 
 export async function getJobSources() {
-  const res = await apiFetch("/api/jobs/sources", undefined, 30_000);
+  const res = await apiFetchWithRetry("/api/jobs/sources", undefined, 45_000, 2);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{ sources: JobSource[] }>;
 }
