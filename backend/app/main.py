@@ -19,7 +19,7 @@ app = FastAPI(title=settings.app_name, debug=settings.debug)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,7 +31,7 @@ def on_startup() -> None:
     logger.info("Starting %s", settings.app_name)
     logger.info("Database: %s", settings.database_url.split("@")[-1])
     logger.info("Storage: %s", settings.storage_path)
-    logger.info("CORS origins: %s", settings.cors_origins)
+    logger.info("CORS origins: %s", settings.cors_origin_list)
     Base.metadata.create_all(bind=engine)
     reset_postgres_sequences(engine)
     logger.info("Database tables ready")
