@@ -1,11 +1,20 @@
 import json
 from pathlib import Path
-from typing import Any
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+def parse_cors_origins(raw: str) -> list[str]:
+    value = (raw or "").strip()
+    if not value:
+        return ["http://localhost:3000"]
+    if value.startswith("["):
+        parsed = json.loads(value)
+        return [str(v).strip() for v in parsed if str(v).strip()]
+    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 class Settings(BaseSettings):
@@ -13,6 +22,7 @@ class Settings(BaseSettings):
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
     app_name: str = "ResumeBuild"
@@ -34,22 +44,15 @@ class Settings(BaseSettings):
     match_threshold: float = 75.0
     top_jobs_limit: int = 50
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    # Plain string env var — never use list[str] here (Render/pydantic JSON parsing breaks).
+    allowed_origins: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices("CORS_ORIGINS", "ALLOWED_ORIGINS"),
+    )
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: Any) -> list[str]:
-        if value is None or value == "":
-            return ["http://localhost:3000"]
-        if isinstance(value, list):
-            return [str(v).strip() for v in value if str(v).strip()]
-        if isinstance(value, str):
-            raw = value.strip()
-            if raw.startswith("["):
-                parsed = json.loads(raw)
-                return [str(v).strip() for v in parsed if str(v).strip()]
-            return [part.strip() for part in raw.split(",") if part.strip()]
-        return value
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return parse_cors_origins(self.allowed_origins)
 
     # Job source configuration (comma-separated)
     greenhouse_boards: str = "stripe,figma,airbnb"
