@@ -6,6 +6,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { WorkflowPanel } from "@/components/landing/WorkflowPanel";
 import {
+  checkBackendHealth,
   discoverJobs,
   getApplications,
   getJobSources,
@@ -13,6 +14,7 @@ import {
   personalizeResume,
   createApplication,
   uploadResume,
+  API_URL,
   type CandidateProfile,
   type DiscoveryResult,
   type JobSource,
@@ -65,6 +67,13 @@ export default function HomePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    void checkBackendHealth()
+      .then((ok) => {
+        if (!ok) setError(`Backend health check failed (${API_URL})`);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Backend unreachable");
+      });
     void getJobSources()
       .then((r) => setJobSources(r.sources))
       .catch(() => {});

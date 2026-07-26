@@ -1,7 +1,31 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
   /\/+$/,
   "",
 );
+
+async function apiFetch(path: string, init?: RequestInit, timeoutMs = 120_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+    });
+    return res;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(
+        `Backend timed out after ${timeoutMs / 1000}s (${API_URL}). Render free tier may be waking up — wait 1 minute and retry.`,
+      );
+    }
+    throw new Error(
+      `Cannot reach backend at ${API_URL}. Check NEXT_PUBLIC_API_URL on Vercel and that Render shows "Live".`,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export type CandidateProfile = {
   name: string;
@@ -73,21 +97,26 @@ export function logClick(
   meta: Record<string, string | number | boolean> = {},
   page = typeof window !== "undefined" ? window.location.pathname : "",
 ) {
-  void fetch(`${API_URL}/api/events/client`, {
+  void apiFetch("/api/events/client", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, page, detail, meta }),
-  }).catch(() => {});
+  }, 10_000).catch(() => {});
+}
+
+export async function checkBackendHealth(): Promise<boolean> {
+  const res = await apiFetch("/health", undefined, 30_000);
+  return res.ok;
 }
 
 export async function uploadResume(file: File) {
   logClick("upload_resume", file.name, { size: file.size });
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${API_URL}/api/resumes/upload`, {
+  const res = await apiFetch("/api/resumes/upload", {
     method: "POST",
     body: form,
-  });
+  }, 180_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{
     candidate_id: number;
@@ -97,31 +126,31 @@ export async function uploadResume(file: File) {
 }
 
 export async function getJobSources() {
-  const res = await fetch(`${API_URL}/api/jobs/sources`);
+  const res = await apiFetch("/api/jobs/sources", undefined, 30_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{ sources: JobSource[] }>;
 }
 
 export async function discoverJobs(candidateId: number) {
   logClick("discover_jobs", "profile-based discovery", { candidateId });
-  await fetch(`${API_URL}/api/jobs/seed`, { method: "POST" });
-  const res = await fetch(`${API_URL}/api/jobs/discover/${candidateId}`, { method: "POST" });
+  await apiFetch("/api/jobs/seed", { method: "POST" }, 30_000);
+  const res = await apiFetch(`/api/jobs/discover/${candidateId}`, { method: "POST" }, 180_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<DiscoveryResult>;
 }
 
 export async function matchJobs(candidateId: number) {
   logClick("run_matching", "score all jobs", { candidateId });
-  const res = await fetch(`${API_URL}/api/matching/${candidateId}`, { method: "POST" });
+  const res = await apiFetch(`/api/matching/${candidateId}`, { method: "POST" }, 180_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<MatchResult[]>;
 }
 
 export async function personalizeResume(candidateId: number, jobId: number) {
   logClick("personalize_resume", `job ${jobId}`, { candidateId, jobId });
-  const res = await fetch(`${API_URL}/api/matching/${candidateId}/personalize/${jobId}`, {
+  const res = await apiFetch(`/api/matching/${candidateId}/personalize/${jobId}`, {
     method: "POST",
-  });
+  }, 120_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -132,7 +161,7 @@ export async function createApplication(
   atsScore?: number,
 ) {
   logClick("apply_to_job", `job ${jobId}`, { candidateId, jobId });
-  const res = await fetch(`${API_URL}/api/applications`, {
+  const res = await apiFetch("/api/applications", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -147,22 +176,23 @@ export async function createApplication(
 }
 
 export async function getApplications(candidateId: number) {
-  const res = await fetch(`${API_URL}/api/applications/candidate/${candidateId}`);
+  const res = await apiFetch(`/api/applications/candidate/${candidateId}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<Application[]>;
 }
 
 export async function updateApplicationStatus(applicationId: number, status: string) {
   logClick("update_application_status", status, { applicationId });
-  const res = await fetch(`${API_URL}/api/applications/${applicationId}/status?status=${status}`, {
-    method: "PATCH",
-  });
+  const res = await apiFetch(
+    `/api/applications/${applicationId}/status?status=${status}`,
+    { method: "PATCH" },
+  );
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<Application>;
 }
 
 export async function getAnalytics(candidateId: number) {
-  const res = await fetch(`${API_URL}/api/applications/analytics/${candidateId}`);
+  const res = await apiFetch(`/api/applications/analytics/${candidateId}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

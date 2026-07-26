@@ -42,6 +42,17 @@ def on_shutdown() -> None:
     logger.info("Shutting down %s", settings.app_name)
 
 
+@app.get("/")
+def root() -> dict:
+    return {
+        "app": settings.app_name,
+        "status": "ok",
+        "health": "/health",
+        "docs": "/docs",
+        "api_prefix": "/api",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {

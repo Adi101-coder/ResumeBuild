@@ -22,6 +22,7 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "ResumeBuild — Apply Smarter, Not Harder",
   description: "AI-powered resume parsing, multi-source job discovery, and application tracking",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
