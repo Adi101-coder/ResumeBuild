@@ -1,5 +1,8 @@
+import json
 from pathlib import Path
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -32,6 +35,21 @@ class Settings(BaseSettings):
     top_jobs_limit: int = 50
 
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: Any) -> list[str]:
+        if value is None or value == "":
+            return ["http://localhost:3000"]
+        if isinstance(value, list):
+            return [str(v).strip() for v in value if str(v).strip()]
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                parsed = json.loads(raw)
+                return [str(v).strip() for v in parsed if str(v).strip()]
+            return [part.strip() for part in raw.split(",") if part.strip()]
+        return value
 
     # Job source configuration (comma-separated)
     greenhouse_boards: str = "stripe,figma,airbnb"

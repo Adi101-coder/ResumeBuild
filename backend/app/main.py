@@ -31,6 +31,7 @@ def on_startup() -> None:
     logger.info("Starting %s", settings.app_name)
     logger.info("Database: %s", settings.database_url.split("@")[-1])
     logger.info("Storage: %s", settings.storage_path)
+    logger.info("CORS origins: %s", settings.cors_origins)
     Base.metadata.create_all(bind=engine)
     reset_postgres_sequences(engine)
     logger.info("Database tables ready")
