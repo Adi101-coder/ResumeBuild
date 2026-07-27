@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     # Set true on Render free/starter to avoid OOM from downloading the ~90MB model.
     embedding_fallback: bool = False
+    openai_timeout_seconds: float = 25.0
 
     storage_path: Path = BASE_DIR / "storage"
     templates_path: Path = BASE_DIR / "templates"
@@ -55,6 +56,13 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return parse_cors_origins(self.allowed_origins)
+
+    @property
+    def use_embedding_fallback(self) -> bool:
+        """Skip the ~90MB sentence-transformers model in production (Render free tier)."""
+        if self.embedding_fallback:
+            return True
+        return not self.debug
 
     # Job source configuration (comma-separated)
     greenhouse_boards: str = "stripe,figma,airbnb"

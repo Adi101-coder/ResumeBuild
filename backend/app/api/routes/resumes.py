@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.agents.resume.parser import ResumeParser
@@ -13,6 +14,9 @@ logger = logging.getLogger("app.resumes")
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 @router.post("/upload", response_model=dict)
 async def upload_resume(
     file: UploadFile = File(...),
@@ -26,51 +30,76 @@ async def upload_resume(
 
     from app.config import settings
 
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Resume PDF must be under 10 MB.")
+    if len(content) < 64:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty or invalid.")
+
     file_id = uuid4().hex
     dest = settings.storage_path / "resumes" / f"{file_id}.pdf"
-    content = await file.read()
     dest.write_bytes(content)
 
-    parser = ResumeParser()
-    logger.info("Parsing resume: %s", dest.name)
-    from app.services.pipeline_log import step, step_done
+    try:
+        parser = ResumeParser()
+        logger.info("Parsing resume: %s", dest.name)
+        from app.services.pipeline_log import step, step_done
 
-    step("PARSE_RESUME", file=file.filename)
-    profile = parser.parse(dest)
-    step_done("PARSE_RESUME", candidate_name=profile.name, skills=len(profile.skills))
-    logger.info(
-        "Parsed profile: name=%r skills=%d experience=%d projects=%d",
-        profile.name,
-        len(profile.skills),
-        len(profile.experience),
-        len(profile.projects),
-    )
-    candidate = Candidate(
-        name=profile.name,
-        email=profile.email,
-        profile_json=profile.model_dump(),
-        raw_text=profile.raw_text,
-    )
-    db.add(candidate)
-    db.flush()
+        step("PARSE_RESUME", file=file.filename)
+        profile = parser.parse(dest)
+        step_done("PARSE_RESUME", candidate_name=profile.name, skills=len(profile.skills))
+        logger.info(
+            "Parsed profile: name=%r skills=%d experience=%d projects=%d",
+            profile.name,
+            len(profile.skills),
+            len(profile.experience),
+            len(profile.projects),
+        )
 
-    resume = Resume(
-        candidate_id=candidate.id,
-        original_filename=file.filename,
-        file_path=str(dest),
-        profile_json=profile.model_dump(),
-        version_label="original",
-    )
-    db.add(resume)
+        candidate = Candidate(
+            name=profile.name or "Unknown",
+            email=profile.email or "",
+            profile_json=profile.model_dump(),
+            raw_text=profile.raw_text,
+        )
+        db.add(candidate)
+        db.flush()
 
-    embedder = EmbeddingService()
-    logger.info("Creating embedding for candidate_id=%s", candidate.id)
-    embedding_id = embedder.upsert_candidate(candidate.id, build_profile_document(profile.model_dump()))
-    candidate.embedding_id = embedding_id
+        resume = Resume(
+            candidate_id=candidate.id,
+            original_filename=file.filename,
+            file_path=str(dest),
+            profile_json=profile.model_dump(),
+            version_label="original",
+        )
+        db.add(resume)
 
-    db.commit()
-    db.refresh(candidate)
-    db.refresh(resume)
+        embedding_id = None
+        try:
+            embedder = EmbeddingService()
+            logger.info("Creating embedding for candidate_id=%s", candidate.id)
+            embedding_id = embedder.upsert_candidate(
+                candidate.id,
+                build_profile_document(profile.model_dump()),
+            )
+            candidate.embedding_id = embedding_id
+        except Exception as exc:
+            logger.warning("Embedding skipped for candidate_id=%s: %s", candidate.id, exc)
+
+        db.commit()
+        db.refresh(candidate)
+        db.refresh(resume)
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError as exc:
+        db.rollback()
+        logger.exception("Database integrity error during upload")
+        raise HTTPException(status_code=409, detail="Could not save candidate. Please retry.") from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Upload failed for %s", file.filename)
+        raise HTTPException(status_code=500, detail=f"Resume upload failed: {exc}") from exc
 
     logger.info(
         "Resume stored: candidate_id=%s resume_id=%s embedding_id=%s",

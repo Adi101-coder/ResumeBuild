@@ -144,8 +144,16 @@ export async function uploadResume(file: File) {
   const res = await apiFetch("/api/resumes/upload", {
     method: "POST",
     body: form,
-  }, 180_000);
-  if (!res.ok) throw new Error(await res.text());
+  }, 90_000);
+  if (!res.ok) {
+    const detail = await res.text();
+    if (res.status === 502 || res.status === 503) {
+      throw new Error(
+        `Upload failed: backend timed out (${res.status}). Open ${API_URL}/health — if ok, retry. A CORS error in DevTools usually means the same thing.`,
+      );
+    }
+    throw new Error(detail || `Upload failed (${res.status})`);
+  }
   return res.json() as Promise<{
     candidate_id: number;
     resume_id: number;

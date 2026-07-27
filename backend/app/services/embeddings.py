@@ -21,7 +21,7 @@ class EmbeddingService:
 
     def __init__(self) -> None:
         self._model = None
-        self._use_fallback = settings.embedding_fallback
+        self._use_fallback = settings.use_embedding_fallback
         self._index: faiss.IndexFlatIP | None = None
         self._id_map: dict[int, int] = {}
         self._meta_path = settings.vector_index_path / "metadata.json"

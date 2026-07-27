@@ -1,7 +1,8 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.routes import applications, events, jobs, matching, resumes
 from app.config import settings
@@ -32,7 +33,7 @@ def on_startup() -> None:
     logger.info("Database: %s", settings.database_url.split("@")[-1])
     logger.info("Storage: %s", settings.storage_path)
     logger.info("CORS origins: %s", settings.cors_origin_list)
-    logger.info("Embedding fallback: %s", settings.embedding_fallback)
+    logger.info("Embedding fallback: %s", settings.use_embedding_fallback)
     Base.metadata.create_all(bind=engine)
     try:
         reset_postgres_sequences(engine)
@@ -63,12 +64,21 @@ def health() -> dict:
         "status": "ok",
         "app": settings.app_name,
         "api_version": 2,
+        "embedding_fallback": settings.use_embedding_fallback,
+        "cors_origins": settings.cors_origin_list,
         "routes": [
+            "/api/resumes/upload",
             "/api/jobs/discover/{candidate_id}",
             "/api/applications/candidate/{candidate_id}",
             "/api/events/client",
         ],
     }
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 app.include_router(events.router, prefix="/api")

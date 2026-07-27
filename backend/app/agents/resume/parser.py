@@ -49,8 +49,12 @@ class ResumeParser:
     def parse(self, file_path: Path) -> CandidateProfile:
         raw_text = self.extract_text(file_path)
         if settings.openai_api_key:
-            logger.info("Using LLM parser (%s)", settings.openai_model)
-            profile = self._parse_with_llm(raw_text)
+            try:
+                logger.info("Using LLM parser (%s)", settings.openai_model)
+                profile = self._parse_with_llm(raw_text)
+            except Exception as exc:
+                logger.warning("LLM parse failed, using heuristic fallback: %s", exc)
+                profile = self._parse_heuristic(raw_text)
         else:
             logger.info("Using heuristic parser (no OPENAI_API_KEY)")
             profile = self._parse_heuristic(raw_text)
@@ -60,7 +64,10 @@ class ResumeParser:
     def _parse_with_llm(self, raw_text: str) -> CandidateProfile:
         from openai import OpenAI
 
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(
+            api_key=settings.openai_api_key,
+            timeout=settings.openai_timeout_seconds,
+        )
         schema = CandidateProfile.model_json_schema()
         prompt = (
             "Extract resume information into JSON matching this schema exactly. "
