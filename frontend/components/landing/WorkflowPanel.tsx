@@ -19,6 +19,7 @@ const PIPELINE = [
 
 type Props = {
   loading: boolean;
+  loadingPhase: "" | "discover" | "match";
   candidateId: number | null;
   profile: CandidateProfile | null;
   discovery: DiscoveryResult | null;
@@ -35,6 +36,7 @@ type Props = {
 
 export function WorkflowPanel({
   loading,
+  loadingPhase,
   candidateId,
   profile,
   discovery,
@@ -176,6 +178,11 @@ export function WorkflowPanel({
                 <p className="mt-2 text-xs text-ink-500">
                   {discovery.search_queries.slice(0, 5).join(" · ")}
                 </p>
+                {loadingPhase === "match" && (
+                  <p className="mt-2 text-xs font-medium text-ink">
+                    Scoring matches against your profile…
+                  </p>
+                )}
               </div>
             )}
 
@@ -187,8 +194,19 @@ export function WorkflowPanel({
                 onDiscoverAndMatch();
               }}
             >
-              {loading ? "Discovering…" : "Discover & match jobs"}
+              {loadingPhase === "discover"
+                ? "Discovering jobs…"
+                : loadingPhase === "match"
+                  ? "Scoring matches…"
+                  : "Discover & match jobs"}
             </button>
+
+            {discovery && !loading && matches.length === 0 && (
+              <p className="text-center text-xs text-ink-500">
+                Jobs are stored in the API pool. Scored matches appear in the list below once
+                matching finishes.
+              </p>
+            )}
 
             {!candidateId && (
               <p className="text-center text-xs text-ink-400">Upload a resume first</p>

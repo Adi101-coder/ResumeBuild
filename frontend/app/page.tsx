@@ -63,6 +63,7 @@ export default function HomePage() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [jobSources, setJobSources] = useState<JobSource[]>([]);
   const [pipelineStep, setPipelineStep] = useState(0);
+  const [loadingPhase, setLoadingPhase] = useState<"" | "discover" | "match">("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -116,22 +117,26 @@ export default function HomePage() {
   async function handleDiscoverAndMatch() {
     if (!candidateId) return;
     setLoading(true);
+    setLoadingPhase("discover");
     setError("");
+    setMatches([]);
     setPipelineStep(2);
     try {
       const disc = await discoverJobs(candidateId);
       setDiscovery(disc);
       setPipelineStep(3);
+      setLoadingPhase("match");
       const results = await matchJobs(candidateId);
       setMatches(results);
       setPipelineStep(4);
       setMessage(
-        `${disc.total_jobs_in_db} jobs in pool (${disc.created} new) · ${results.length} top matches`,
+        `${disc.total_jobs_in_db} jobs in pool (${disc.created} new) · ${results.length} scored matches shown below`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Discovery failed");
     } finally {
       setLoading(false);
+      setLoadingPhase("");
     }
   }
 
@@ -378,6 +383,7 @@ export default function HomePage() {
       {/* Interactive workflow */}
       <WorkflowPanel
         loading={loading}
+        loadingPhase={loadingPhase}
         candidateId={candidateId}
         profile={profile}
         discovery={discovery}

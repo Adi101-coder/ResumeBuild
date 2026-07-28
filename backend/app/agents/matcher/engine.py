@@ -21,7 +21,7 @@ class MatchingEngine:
             self._embedder = EmbeddingService()
         return self._embedder
 
-    def score(self, profile: CandidateProfile | dict, job: dict) -> dict:
+    def score(self, profile: CandidateProfile | dict, job: dict, *, profile_vec=None) -> dict:
         if isinstance(profile, CandidateProfile):
             profile_data = profile.model_dump()
         else:
@@ -35,7 +35,7 @@ class MatchingEngine:
         skills_score = self._skills_score(profile_skills, job_skills, profile_text, description)
         experience_score = self._experience_score(profile_data, description)
         location_score = self._location_score(profile_data.get("location", ""), job.get("location", ""))
-        embedding_score = self._embedding_score(profile_data, job)
+        embedding_score = self._embedding_score(profile_data, job, profile_vec=profile_vec)
 
         final = round(
             skills_score * 0.35
@@ -57,13 +57,24 @@ class MatchingEngine:
             final >= self.threshold,
         )
 
-        return {            "score": final,
+        return {
+            "score": final,
             "skills_score": round(skills_score, 1),
             "experience_score": round(experience_score, 1),
             "embedding_score": round(embedding_score, 1),
             "location_score": round(location_score, 1),
             "passed_threshold": final >= self.threshold,
         }
+
+    def profile_vector(self, profile: CandidateProfile | dict):
+        from app.services.embeddings import build_profile_document
+
+        profile_data = profile.model_dump() if isinstance(profile, CandidateProfile) else profile
+        return self.embedder.embed_text(build_profile_document(profile_data))
+
+    def score_many(self, profile: CandidateProfile | dict, jobs: list[dict]) -> list[dict]:
+        profile_vec = self.profile_vector(profile)
+        return [self.score(profile, job, profile_vec=profile_vec) for job in jobs]
 
     def _skills_score(
         self,
@@ -105,19 +116,20 @@ class MatchingEngine:
             return 100.0
         return 40.0
 
-    def _embedding_score(self, profile: dict, job: dict) -> float:
-        from app.services.embeddings import build_profile_document
-
-        profile_doc = build_profile_document(profile)
+    def _embedding_score(self, profile: dict, job: dict, *, profile_vec=None) -> float:
         job_doc = " ".join(
             [
                 job.get("title", ""),
                 job.get("company", ""),
-                job.get("description", ""),
+                str(job.get("description", ""))[:1500],
                 ", ".join(job.get("skills", [])),
             ]
         )
-        profile_vec = self.embedder.embed_text(profile_doc)
+        if profile_vec is None:
+            from app.services.embeddings import build_profile_document
+
+            profile_doc = build_profile_document(profile)
+            profile_vec = self.embedder.embed_text(profile_doc)
         job_vec = self.embedder.embed_text(job_doc)
         similarity = float((profile_vec @ job_vec.T)[0][0])
         return max(0.0, min(100.0, similarity * 100))

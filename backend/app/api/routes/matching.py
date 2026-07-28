@@ -16,6 +16,9 @@ logger = logging.getLogger("app.matching")
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
+MATCH_POOL_LIMIT = 150
+
+
 @router.post("/{candidate_id}", response_model=list[MatchResult])
 def match_candidate_jobs(candidate_id: int, db: Session = Depends(get_db)):
     candidate = db.get(Candidate, candidate_id)
@@ -24,33 +27,41 @@ def match_candidate_jobs(candidate_id: int, db: Session = Depends(get_db)):
 
     profile = CandidateProfile.model_validate(candidate.profile_json)
     engine = MatchingEngine(threshold=settings.match_threshold)
-    jobs = db.query(Job).order_by(Job.created_at.desc()).limit(500).all()
+    jobs = db.query(Job).order_by(Job.created_at.desc()).limit(MATCH_POOL_LIMIT).all()
     logger.info("Matching candidate_id=%s against %d jobs", candidate_id, len(jobs))
     from app.services.pipeline_log import step, step_done
 
     step("MATCH_JOBS", candidate_id=candidate_id, job_pool=len(jobs))
-    results: list[MatchResult] = []
-    for job in jobs:
-        scores = engine.score(profile, {
+
+    db.query(JobMatch).filter(JobMatch.candidate_id == candidate.id).delete()
+    db.flush()
+
+    job_payloads = [
+        {
             "title": job.title,
             "company": job.company,
             "location": job.location,
             "description": job.description,
             "skills": job.skills or [],
-        })
+        }
+        for job in jobs
+    ]
+    score_rows = engine.score_many(profile, job_payloads)
 
-        match = JobMatch(
-            candidate_id=candidate.id,
-            job_id=job.id,
-            score=scores["score"],
-            skills_score=scores["skills_score"],
-            experience_score=scores["experience_score"],
-            embedding_score=scores["embedding_score"],
-            location_score=scores["location_score"],
-            passed_threshold=scores["passed_threshold"],
+    results: list[MatchResult] = []
+    for job, scores in zip(jobs, score_rows):
+        db.add(
+            JobMatch(
+                candidate_id=candidate.id,
+                job_id=job.id,
+                score=scores["score"],
+                skills_score=scores["skills_score"],
+                experience_score=scores["experience_score"],
+                embedding_score=scores["embedding_score"],
+                location_score=scores["location_score"],
+                passed_threshold=scores["passed_threshold"],
+            )
         )
-        db.add(match)
-
         results.append(
             MatchResult(
                 job_id=job.id,
