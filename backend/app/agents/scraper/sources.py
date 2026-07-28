@@ -134,7 +134,9 @@ class YCJobsScraper(BaseJobScraper):
         headers = {"User-Agent": "ResumeBuild/1.0"}
         async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
             response = await client.get(self.API_URL)
-            response.raise_for_status()
+            if response.status_code >= 400:
+                logger.warning("YC Jobs unavailable: HTTP %s", response.status_code)
+                return []
             payload = response.json()
 
         jobs: list[dict] = []

@@ -9,6 +9,7 @@ from app.agents.scraper.registry import SOURCE_CATALOG, build_scrapers
 from app.database.models import Candidate, Job
 from app.schemas.profile import CandidateProfile
 from app.services.deduplication import job_dedup_hash
+from app.services.job_normalize import prepare_job_row
 from app.services.pipeline_log import step, step_done, step_fail
 from app.services.profile_queries import build_search_queries
 
@@ -118,17 +119,33 @@ async def discover_jobs_for_candidate(db: Session, candidate_id: int) -> dict:
     created = 0
     skipped = 0
     seen_hashes: set[str] = set()
+    candidates: list[tuple[dict, str]] = []
+
     for item in scraped:
         dedup_hash = job_dedup_hash(item["company"], item["title"], item["location"])
         if dedup_hash in seen_hashes:
             skipped += 1
             continue
         seen_hashes.add(dedup_hash)
-        if db.query(Job).filter(Job.dedup_hash == dedup_hash).first():
+        candidates.append((item, dedup_hash))
+
+    existing_hashes: set[str] = set()
+    if candidates:
+        hash_list = [dedup_hash for _, dedup_hash in candidates]
+        existing_hashes = {
+            row[0] for row in db.query(Job.dedup_hash).filter(Job.dedup_hash.in_(hash_list)).all()
+        }
+
+    for item, dedup_hash in candidates:
+        if dedup_hash in existing_hashes:
             skipped += 1
             continue
-        db.add(Job(**item, dedup_hash=dedup_hash))
-        created += 1
+        try:
+            db.add(prepare_job_row(item, dedup_hash))
+            created += 1
+        except Exception as exc:
+            logger.warning("Skipped job %s @ %s: %s", item.get("title"), item.get("company"), exc)
+            skipped += 1
 
     db.commit()
     total_jobs = db.query(Job).count()

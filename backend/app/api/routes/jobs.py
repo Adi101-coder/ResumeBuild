@@ -67,6 +67,10 @@ async def discover_jobs(candidate_id: int, db: Session = Depends(get_db)):
         result = await discover_jobs_for_candidate(db, candidate_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Discovery failed for candidate_id=%s", candidate_id)
+        raise HTTPException(status_code=500, detail=f"Job discovery failed: {exc}") from exc
     logger.info("Discovery complete: %s", result)
     return result
 

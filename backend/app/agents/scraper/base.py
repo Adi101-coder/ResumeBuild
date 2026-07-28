@@ -109,6 +109,14 @@ class ArbeitnowScraper(BaseJobScraper):
             if location and location.lower() not in loc.lower() and "remote" not in loc.lower():
                 continue
 
+            remote_flag = item.get("remote")
+            if remote_flag is True:
+                remote_type = "remote"
+            elif remote_flag in (False, None):
+                remote_type = ""
+            else:
+                remote_type = str(remote_flag)
+
             jobs.append(
                 {
                     "title": title,
@@ -121,7 +129,7 @@ class ArbeitnowScraper(BaseJobScraper):
                     "apply_url": item.get("url", ""),
                     "application_type": "external",
                     "easy_apply": False,
-                    "remote_type": item.get("remote", "") or "",
+                    "remote_type": remote_type,
                     "visa_required": False,
                     "source": self.source_name,
                 }
