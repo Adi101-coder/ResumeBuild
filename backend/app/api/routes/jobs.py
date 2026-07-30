@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.agents.scraper.base import RemoteOKScraper
+from app.agents.scraper.sources import IndeedScraper
 from app.database.models import Job
 from app.database.session import get_db
 from app.schemas.job import JobCreate, JobResponse
@@ -75,30 +75,32 @@ async def discover_jobs(candidate_id: int, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/scrape/remoteok", response_model=list[JobResponse])
-async def scrape_remoteok(
-    query: str = Query(default=""),
+@router.post("/scrape/indeed", response_model=list[JobResponse])
+async def scrape_indeed(
+    query: str = Query(default="software engineer"),
+    location: str = Query(default="remote"),
     db: Session = Depends(get_db),
 ):
-    scraper = RemoteOKScraper()
-    logger.info("Scraping RemoteOK with query=%r", query or "(all)")
-    scraped = await scraper.fetch_jobs(query=query, limit=50)
-    logger.info("RemoteOK returned %d jobs", len(scraped))
-    created: list[Job] = []
+    from app.services.job_normalize import prepare_job_row
 
+    scraper = IndeedScraper()
+    logger.info("Scraping Indeed with query=%r location=%r", query, location)
+    scraped = await scraper.fetch_jobs(query=query, location=location, limit=50)
+    logger.info("Indeed returned %d jobs", len(scraped))
+    created_jobs: list[Job] = []
     for item in scraped:
         dedup_hash = job_dedup_hash(item["company"], item["title"], item["location"])
         if db.query(Job).filter(Job.dedup_hash == dedup_hash).first():
             continue
-        job = Job(**item, dedup_hash=dedup_hash)
-        db.add(job)
-        created.append(job)
+        row = prepare_job_row(item, dedup_hash)
+        db.add(row)
+        created_jobs.append(row)
 
     db.commit()
-    for job in created:
+    for job in created_jobs:
         db.refresh(job)
-    logger.info("Stored %d new jobs from RemoteOK", len(created))
-    return created
+    logger.info("Stored %d new jobs from Indeed", len(created_jobs))
+    return created_jobs
 
 @router.get("/{job_id}", response_model=JobResponse)
 def get_job(job_id: int, db: Session = Depends(get_db)):

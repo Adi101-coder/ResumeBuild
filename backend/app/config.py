@@ -64,14 +64,11 @@ class Settings(BaseSettings):
             return True
         return not self.debug
 
-    # Job source configuration (comma-separated)
-    greenhouse_boards: str = "stripe,figma,airbnb"
-    lever_companies: str = "netflix,palantir"
-    ashby_boards: str = ""
-    career_page_feeds: str = ""
-    wellfound_api_token: str = ""
+    # Job boards — Indeed, ZipRecruiter, LinkedIn, Glassdoor only
+    indeed_domain: str = "www.indeed.com"
     linkedin_access_token: str = ""
-    twitter_bearer_token: str = ""
+    linkedin_session_cookie: str = ""
+    glassdoor_session_cookie: str = ""
 
 
 settings = Settings()

@@ -37,7 +37,7 @@ const FEATURES = [
 ];
 
 const DAILY_FEATURES = [
-  "Multi-source scraping from Greenhouse, Lever, RemoteOK, and more",
+  "Job discovery from Indeed, ZipRecruiter, LinkedIn, and Glassdoor",
   "Profile-based queries that adapt to any industry",
   "ATS-aware resume personalization per role",
   "Persistent application history and analytics",
@@ -45,12 +45,12 @@ const DAILY_FEATURES = [
 
 const FOCUS_BENEFITS = [
   "One resume upload powers the entire pipeline",
-  "Parallel discovery across 12+ job sources",
+  "Parallel discovery across Indeed, ZipRecruiter, LinkedIn, and Glassdoor",
   "Threshold-based matching so you focus on strong fits",
   "Export-ready PDFs tailored to each posting",
 ];
 
-const TRUSTED = ["Stripe", "Figma", "Airbnb", "Netflix", "Datadog", "Cloudflare"];
+const TRUSTED = ["Indeed", "ZipRecruiter", "LinkedIn", "Glassdoor"];
 
 const COMMUNITY = ["AK", "JM", "SR", "PL", "DC", "EV", "TH", "NW"];
 

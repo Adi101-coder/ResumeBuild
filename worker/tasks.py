@@ -12,7 +12,7 @@ celery_app.conf.task_routes = {
 
 
 @celery_app.task(name="worker.tasks.scrape_jobs")
-def scrape_jobs(source: str = "remoteok", query: str = "engineer") -> dict:
+def scrape_jobs(source: str = "indeed", query: str = "engineer") -> dict:
     """Placeholder for async job scraping pipeline."""
     return {"source": source, "query": query, "status": "queued"}
 

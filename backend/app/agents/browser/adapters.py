@@ -1,4 +1,4 @@
-"""Browser automation adapters — prototype stubs for ATS-specific handlers."""
+"""Browser automation adapters for Indeed, ZipRecruiter, LinkedIn, and Glassdoor."""
 
 from abc import ABC, abstractmethod
 
@@ -15,16 +15,30 @@ class ApplicationAdapter(ABC):
         raise NotImplementedError
 
 
-class GreenhouseAdapter(ApplicationAdapter):
-    platform = "greenhouse"
+class IndeedAdapter(ApplicationAdapter):
+    platform = "indeed"
 
     async def can_handle(self, url: str) -> bool:
-        return "greenhouse.io" in url
+        return "indeed.com" in url
 
     async def apply(self, url: str, profile: dict, resume_path: str, cover_letter_path: str | None) -> dict:
         return {
             "status": "manual_required",
-            "message": "Greenhouse adapter stub — Playwright handler not wired in prototype.",
+            "message": "Indeed auto-apply requires Playwright session — adapter not wired yet.",
+            "url": url,
+        }
+
+
+class ZipRecruiterAdapter(ApplicationAdapter):
+    platform = "ziprecruiter"
+
+    async def can_handle(self, url: str) -> bool:
+        return "ziprecruiter.com" in url
+
+    async def apply(self, url: str, profile: dict, resume_path: str, cover_letter_path: str | None) -> dict:
+        return {
+            "status": "manual_required",
+            "message": "ZipRecruiter auto-apply requires Playwright session — adapter not wired yet.",
             "url": url,
         }
 
@@ -43,9 +57,25 @@ class LinkedInEasyApplyAdapter(ApplicationAdapter):
         }
 
 
+class GlassdoorAdapter(ApplicationAdapter):
+    platform = "glassdoor"
+
+    async def can_handle(self, url: str) -> bool:
+        return "glassdoor.com" in url
+
+    async def apply(self, url: str, profile: dict, resume_path: str, cover_letter_path: str | None) -> dict:
+        return {
+            "status": "manual_required",
+            "message": "Glassdoor auto-apply requires Playwright session — adapter not wired yet.",
+            "url": url,
+        }
+
+
 ADAPTERS: list[ApplicationAdapter] = [
-    GreenhouseAdapter(),
+    IndeedAdapter(),
+    ZipRecruiterAdapter(),
     LinkedInEasyApplyAdapter(),
+    GlassdoorAdapter(),
 ]
 
 

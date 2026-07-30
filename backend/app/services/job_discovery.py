@@ -15,11 +15,9 @@ from app.services.profile_queries import build_search_queries
 
 logger = logging.getLogger("app.discovery")
 
-# Board scrapers return all company jobs — location filtering happens in matching, not here.
-BOARD_SOURCES = frozenset({"greenhouse", "lever", "ashby", "career_page"})
-SCRAPER_TIMEOUT_SEC = 25.0
-JOBS_PER_SOURCE = 60
-JOBS_AFTER_FILTER = 40
+SCRAPER_TIMEOUT_SEC = 30.0
+JOBS_PER_SOURCE = 50
+JOBS_AFTER_FILTER = 35
 
 
 def _select_jobs_for_profile(jobs: list[dict], queries: list[str], limit: int) -> list[dict]:
@@ -50,10 +48,13 @@ def _select_jobs_for_profile(jobs: list[dict], queries: list[str], limit: int) -
 
 
 async def _fetch_from_scraper(scraper, queries: list[str], location_hint: str) -> list[dict]:
-    """One HTTP fetch per scraper, then filter locally (avoids 7× duplicate API calls)."""
-    source = scraper.source_name
-    loc = location_hint if source not in BOARD_SOURCES else ""
-    raw = await scraper.fetch_jobs(query="", location=loc, limit=JOBS_PER_SOURCE)
+    """One profile-based search per job board."""
+    primary_query = queries[0] if queries else "software engineer"
+    raw = await scraper.fetch_jobs(
+        query=primary_query,
+        location=location_hint,
+        limit=JOBS_PER_SOURCE,
+    )
     return _select_jobs_for_profile(raw, queries, limit=JOBS_AFTER_FILTER)
 
 

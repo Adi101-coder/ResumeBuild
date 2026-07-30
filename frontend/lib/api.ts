@@ -169,7 +169,6 @@ export async function getJobSources() {
 
 export async function discoverJobs(candidateId: number) {
   logClick("discover_jobs", "profile-based discovery", { candidateId });
-  await apiFetch("/api/jobs/seed", { method: "POST" }, 30_000);
   const res = await apiFetch(`/api/jobs/discover/${candidateId}`, { method: "POST" }, 180_000);
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<DiscoveryResult>;
