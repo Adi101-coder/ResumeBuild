@@ -71,11 +71,26 @@ class GlassdoorAdapter(ApplicationAdapter):
         }
 
 
+class GreenhouseAdapter(ApplicationAdapter):
+    platform = "greenhouse"
+
+    async def can_handle(self, url: str) -> bool:
+        return "greenhouse.io" in url
+
+    async def apply(self, url: str, profile: dict, resume_path: str, cover_letter_path: str | None) -> dict:
+        return {
+            "status": "use_cli",
+            "message": "Run: python scripts/auto_apply.py run --candidate-id ID --urls URL",
+            "url": url,
+        }
+
+
 ADAPTERS: list[ApplicationAdapter] = [
     IndeedAdapter(),
     ZipRecruiterAdapter(),
     LinkedInEasyApplyAdapter(),
     GlassdoorAdapter(),
+    GreenhouseAdapter(),
 ]
 
 

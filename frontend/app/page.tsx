@@ -37,7 +37,7 @@ const FEATURES = [
 ];
 
 const DAILY_FEATURES = [
-  "Job discovery from Indeed, ZipRecruiter, LinkedIn, and Glassdoor",
+  "Job discovery from Indeed, ZipRecruiter, LinkedIn, Glassdoor + Greenhouse companies",
   "Profile-based queries that adapt to any industry",
   "ATS-aware resume personalization per role",
   "Persistent application history and analytics",
@@ -45,12 +45,12 @@ const DAILY_FEATURES = [
 
 const FOCUS_BENEFITS = [
   "One resume upload powers the entire pipeline",
-  "Parallel discovery across Indeed, ZipRecruiter, LinkedIn, and Glassdoor",
+  "Parallel discovery across job boards and company career pages (Greenhouse)",
   "Threshold-based matching so you focus on strong fits",
   "Export-ready PDFs tailored to each posting",
 ];
 
-const TRUSTED = ["Indeed", "ZipRecruiter", "LinkedIn", "Glassdoor"];
+const TRUSTED = ["Indeed", "ZipRecruiter", "LinkedIn", "Glassdoor", "Greenhouse"];
 
 const COMMUNITY = ["AK", "JM", "SR", "PL", "DC", "EV", "TH", "NW"];
 

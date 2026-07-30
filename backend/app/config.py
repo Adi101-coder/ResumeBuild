@@ -64,8 +64,9 @@ class Settings(BaseSettings):
             return True
         return not self.debug
 
-    # Job boards — Indeed, ZipRecruiter, LinkedIn, Glassdoor only
+    # Job boards — Indeed, ZipRecruiter, LinkedIn, Glassdoor + Greenhouse career pages
     indeed_domain: str = "www.indeed.com"
+    greenhouse_boards: str = "stripe,figma,airbnb,netflix,datadog"
     linkedin_access_token: str = ""
     linkedin_session_cookie: str = ""
     glassdoor_session_cookie: str = ""

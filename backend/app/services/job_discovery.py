@@ -18,6 +18,8 @@ logger = logging.getLogger("app.discovery")
 SCRAPER_TIMEOUT_SEC = 30.0
 JOBS_PER_SOURCE = 50
 JOBS_AFTER_FILTER = 35
+# Greenhouse boards expose all company jobs — filter locally by profile queries.
+BOARD_SOURCES = frozenset({"greenhouse"})
 
 
 def _select_jobs_for_profile(jobs: list[dict], queries: list[str], limit: int) -> list[dict]:
@@ -48,19 +50,28 @@ def _select_jobs_for_profile(jobs: list[dict], queries: list[str], limit: int) -
 
 
 async def _fetch_from_scraper(scraper, queries: list[str], location_hint: str) -> list[dict]:
-    """One profile-based search per job board."""
-    primary_query = queries[0] if queries else "software engineer"
-    raw = await scraper.fetch_jobs(
-        query=primary_query,
-        location=location_hint,
-        limit=JOBS_PER_SOURCE,
-    )
+    """Profile-based search for job boards; full-board fetch + local filter for Greenhouse."""
+    source = scraper.source_name
+    if source in BOARD_SOURCES:
+        raw = await scraper.fetch_jobs(query="", location="", limit=JOBS_PER_SOURCE)
+    else:
+        primary_query = queries[0] if queries else "software engineer"
+        raw = await scraper.fetch_jobs(
+            query=primary_query,
+            location=location_hint,
+            limit=JOBS_PER_SOURCE,
+        )
     return _select_jobs_for_profile(raw, queries, limit=JOBS_AFTER_FILTER)
 
 
 async def _scrape_one(scraper, queries: list[str], location_hint: str) -> tuple[str, list[dict], str | None]:
     source = scraper.source_name
-    label = getattr(scraper, "board_token", None) or getattr(scraper, "company_slug", None) or source
+    label = (
+        getattr(scraper, "company_label", None)
+        or getattr(scraper, "board_token", None)
+        or getattr(scraper, "company_slug", None)
+        or source
+    )
     step(f"SCRAPE_{source.upper()}", target=label)
     try:
         batch = await asyncio.wait_for(

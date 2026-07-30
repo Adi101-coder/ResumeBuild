@@ -1,4 +1,4 @@
-"""Job board scrapers — Indeed, ZipRecruiter, LinkedIn, Glassdoor only."""
+"""Job board scrapers — Indeed, ZipRecruiter, LinkedIn, Glassdoor + Greenhouse company boards."""
 
 from __future__ import annotations
 
@@ -280,4 +280,58 @@ class GlassdoorScraper(BaseJobScraper):
             logger.warning("Glassdoor fetch failed (set GLASSDOOR_SESSION_COOKIE for better results): %s", exc)
 
         logger.info("Glassdoor kept %d jobs", len(jobs))
+        return jobs
+
+
+class GreenhouseBoardScraper(BaseJobScraper):
+    """Public Greenhouse job boards (Stripe, Figma, Airbnb, etc.)."""
+
+    source_name = "greenhouse"
+
+    def __init__(self, board_token: str, company_label: str = "") -> None:
+        self.board_token = board_token
+        self.company_label = company_label or board_token.replace("-", " ").title()
+
+    async def fetch_jobs(self, query: str = "", location: str = "", limit: int = 50) -> list[dict]:
+        url = f"https://boards-api.greenhouse.io/v1/boards/{self.board_token}/jobs?content=true"
+        logger.info("Greenhouse fetch: board=%s", self.board_token)
+
+        jobs: list[dict] = []
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url)
+                if response.status_code == 404:
+                    logger.warning("Greenhouse board not found: %s", self.board_token)
+                    return []
+                response.raise_for_status()
+                payload = response.json()
+
+            for item in payload.get("jobs", [])[: limit * 2]:
+                title = item.get("title", "")
+                loc_data = item.get("location") or {}
+                loc = loc_data.get("name", "") if isinstance(loc_data, dict) else str(loc_data)
+                content = item.get("content", "") or ""
+                haystack = f"{title} {content} {self.company_label}"
+                if query and not _matches_query(haystack, query):
+                    continue
+                if location and location.lower() not in loc.lower() and "remote" not in loc.lower():
+                    if location.lower() not in ("remote", ""):
+                        continue
+                jobs.append(
+                    _job(
+                        title=title,
+                        company=self.company_label,
+                        location=loc or "Remote",
+                        description=content[:5000],
+                        apply_url=item.get("absolute_url", ""),
+                        source=self.source_name,
+                        application_type="greenhouse",
+                    )
+                )
+                if len(jobs) >= limit:
+                    break
+        except Exception as exc:
+            logger.warning("Greenhouse board %s failed: %s", self.board_token, exc)
+
+        logger.info("Greenhouse %s kept %d jobs", self.board_token, len(jobs))
         return jobs

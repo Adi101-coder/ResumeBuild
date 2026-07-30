@@ -166,7 +166,7 @@ export function WorkflowPanel({
               <p className="section-tag">Step 2</p>
               <h3 className="mt-2 text-2xl font-semibold text-ink">Discover & match</h3>
               <p className="mt-2 text-sm text-ink-500">
-                Profile-driven search across Indeed, ZipRecruiter, LinkedIn, and Glassdoor.
+                Profile-driven search across Indeed, ZipRecruiter, LinkedIn, Glassdoor, and Greenhouse companies.
               </p>
             </div>
 
