@@ -22,6 +22,8 @@ class Candidate(Base):
 
     resumes: Mapped[list["Resume"]] = relationship(back_populates="candidate")
     applications: Mapped[list["Application"]] = relationship(back_populates="candidate")
+    platform_sessions: Mapped[list["PlatformSession"]] = relationship(back_populates="candidate")
+    auto_apply_config: Mapped["AutoApplyConfig | None"] = relationship(back_populates="candidate", uselist=False)
 
 
 class Resume(Base):
@@ -91,3 +93,34 @@ class Application(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     candidate: Mapped["Candidate"] = relationship(back_populates="applications")
+
+
+class PlatformSession(Base):
+    """Playwright cookie/session state — not passwords."""
+
+    __tablename__ = "platform_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    candidate_id: Mapped[int] = mapped_column(ForeignKey("candidates.id"), index=True)
+    platform: Mapped[str] = mapped_column(String(64), index=True)
+    storage_state: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    candidate: Mapped["Candidate"] = relationship(back_populates="platform_sessions")
+
+
+class AutoApplyConfig(Base):
+    __tablename__ = "auto_apply_configs"
+
+    candidate_id: Mapped[int] = mapped_column(ForeignKey("candidates.id"), primary_key=True)
+    job_titles: Mapped[list] = mapped_column(JSON, default=list)
+    location: Mapped[str] = mapped_column(String(255), default="Remote")
+    resume_filename: Mapped[str] = mapped_column(String(512), default="")
+    resume_path: Mapped[str] = mapped_column(String(1024), default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    candidate: Mapped["Candidate"] = relationship(back_populates="auto_apply_config")

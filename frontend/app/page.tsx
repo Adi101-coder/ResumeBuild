@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AutoApplyPanel } from "@/components/landing/AutoApplyPanel";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { WorkflowPanel } from "@/components/landing/WorkflowPanel";
@@ -14,6 +15,8 @@ import {
   personalizeResume,
   createApplication,
   uploadResume,
+  startBot,
+  getBotStatus,
   API_URL,
   type CandidateProfile,
   type DiscoveryResult,
@@ -66,6 +69,16 @@ export default function HomePage() {
   const [loadingPhase, setLoadingPhase] = useState<"" | "discover" | "match">("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [botRunning, setBotRunning] = useState(false);
+
+  async function refreshApplications(id: number) {
+    try {
+      const apps = await getApplications(id);
+      setAppliedIds(new Set(apps.map((a) => a.job_id)));
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     void checkBackendHealth()
@@ -90,6 +103,9 @@ export default function HomePage() {
       setCandidateId(id);
       void getApplications(id)
         .then((apps) => setAppliedIds(new Set(apps.map((a) => a.job_id))))
+        .catch(() => {});
+      void getBotStatus(id)
+        .then((s) => setBotRunning(s.state === "running" || s.state === "stopping"))
         .catch(() => {});
     }
   }, []);
@@ -164,6 +180,41 @@ export default function HomePage() {
       setMessage(`Tracked application to ${match.title} at ${match.company}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Apply failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleBotApply(match: MatchResult) {
+    if (!candidateId || !match.apply_url) return;
+    setLoading(true);
+    setError("");
+    try {
+      const platform = match.apply_url.includes("linkedin")
+        ? "linkedin"
+        : match.apply_url.includes("indeed")
+          ? "indeed"
+          : match.apply_url.includes("ziprecruiter")
+            ? "ziprecruiter"
+            : match.apply_url.includes("glassdoor")
+              ? "glassdoor"
+              : "linkedin";
+      await startBot(candidateId, {
+        platform,
+        continuous: false,
+        batchSize: 1,
+        jobUrl: match.apply_url,
+        jobId: match.job_id,
+        jobTitle: match.title,
+        jobCompany: match.company,
+      });
+      setBotRunning(true);
+      setMessage(`Bot applying to ${match.title} at ${match.company}…`);
+      setTimeout(() => {
+        if (candidateId) void refreshApplications(candidateId);
+      }, 8000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bot apply failed");
     } finally {
       setLoading(false);
     }
@@ -396,6 +447,19 @@ export default function HomePage() {
         onDiscoverAndMatch={() => void handleDiscoverAndMatch()}
         onPersonalize={(jobId) => void handlePersonalize(jobId)}
         onApply={(match) => void handleApply(match)}
+        onBotApply={(match) => void handleBotApply(match)}
+        botRunning={botRunning}
+      />
+
+      <AutoApplyPanel
+        candidateId={candidateId}
+        onApplicationsChanged={() => {
+          if (!candidateId) return;
+          void refreshApplications(candidateId);
+          void getBotStatus(candidateId).then((s) =>
+            setBotRunning(s.state === "running" || s.state === "stopping"),
+          );
+        }}
       />
 
       <LandingFooter />

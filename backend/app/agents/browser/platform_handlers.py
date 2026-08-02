@@ -16,6 +16,7 @@ from app.agents.browser.forms import (
     fill_standard_fields,
     upload_resume,
 )
+from app.agents.browser.linkedin import apply_linkedin_job_page
 
 logger = logging.getLogger("app.browser.platforms")
 
@@ -38,10 +39,12 @@ def _guard_captcha(page: Page, platform: str) -> None:
         wait_for_human(page, f"{platform}: CAPTCHA or security check detected.")
 
 
-def _wizard_continue(page: Page, profile: dict, resume_path: str, steps: int = 5) -> str:
+def _wizard_continue(
+    page: Page, profile: dict, resume_path: str, platform: str, *, steps: int = 5
+) -> str:
     """Generic multi-step apply wizard used by several boards."""
     for step in range(steps):
-        _guard_captcha(page)
+        _guard_captcha(page, platform)
         fill_standard_fields(page, profile)
         upload_resume(page, resume_path)
 
@@ -65,70 +68,31 @@ def _wizard_continue(page: Page, profile: dict, resume_path: str, steps: int = 5
 
 
 def apply_linkedin(page: Page, url: str, profile: dict, resume_path: str) -> ApplyOutcome:
-    logger.info("LinkedIn apply: %s", url)
-    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-    page.wait_for_timeout(2000)
-    _guard_captcha(page)
-
-    if "/login" in page.url:
-        wait_for_human(page, "LinkedIn: log in manually in the browser, then press ENTER.")
-
-    if not click_apply_entrypoint(page):
-        return ApplyOutcome(APPLY_RESULT_UNSUPPORTED, "No Easy Apply / Apply button found.", "linkedin", url)
-
-    page.wait_for_timeout(1500)
-    status = _wizard_continue(page, profile, resume_path, steps=8)
-    return ApplyOutcome(status, f"LinkedIn apply finished with status={status}", "linkedin", url)
+    return apply_linkedin_job_page(page, url, profile, resume_path)
 
 
 def apply_indeed(page: Page, url: str, profile: dict, resume_path: str) -> ApplyOutcome:
+    from app.agents.browser.board_common import INDEED_CONFIG, apply_job_url
+
     logger.info("Indeed apply: %s", url)
-    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-    page.wait_for_timeout(2000)
-    _guard_captcha(page)
-
-    if not click_apply_entrypoint(page):
-        return ApplyOutcome(APPLY_RESULT_UNSUPPORTED, "No Indeed Apply button — may redirect externally.", "indeed", url)
-
-    page.wait_for_timeout(1500)
-
-    # Indeed sometimes opens a new tab for smart apply
-    if len(page.context.pages) > 1:
-        page = page.context.pages[-1]
-
-    status = _wizard_continue(page, profile, resume_path, steps=6)
-    return ApplyOutcome(status, f"Indeed apply finished with status={status}", "indeed", url)
+    result = apply_job_url(page, url, {**profile, "_job_title": "Job"}, resume_path, INDEED_CONFIG)
+    return ApplyOutcome(result["status"], result["message"], "indeed", url)
 
 
 def apply_ziprecruiter(page: Page, url: str, profile: dict, resume_path: str) -> ApplyOutcome:
+    from app.agents.browser.board_common import ZIPRECRUITER_CONFIG, apply_job_url
+
     logger.info("ZipRecruiter apply: %s", url)
-    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-    page.wait_for_timeout(2000)
-    _guard_captcha(page)
-
-    if not click_apply_entrypoint(page):
-        return ApplyOutcome(APPLY_RESULT_UNSUPPORTED, "No Quick Apply button found.", "ziprecruiter", url)
-
-    page.wait_for_timeout(1500)
-    status = _wizard_continue(page, profile, resume_path, steps=5)
-    return ApplyOutcome(status, f"ZipRecruiter apply finished with status={status}", "ziprecruiter", url)
+    result = apply_job_url(page, url, {**profile, "_job_title": "Job"}, resume_path, ZIPRECRUITER_CONFIG)
+    return ApplyOutcome(result["status"], result["message"], "ziprecruiter", url)
 
 
 def apply_glassdoor(page: Page, url: str, profile: dict, resume_path: str) -> ApplyOutcome:
+    from app.agents.browser.board_common import GLASSDOOR_CONFIG, apply_job_url
+
     logger.info("Glassdoor apply: %s", url)
-    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-    page.wait_for_timeout(2000)
-    _guard_captcha(page)
-
-    if not click_apply_entrypoint(page):
-        return ApplyOutcome(APPLY_RESULT_UNSUPPORTED, "No apply button — Glassdoor may redirect off-site.", "glassdoor", url)
-
-    page.wait_for_timeout(1500)
-    if len(page.context.pages) > 1:
-        page = page.context.pages[-1]
-
-    status = _wizard_continue(page, profile, resume_path, steps=6)
-    return ApplyOutcome(status, f"Glassdoor apply finished with status={status}", "glassdoor", url)
+    result = apply_job_url(page, url, {**profile, "_job_title": "Job"}, resume_path, GLASSDOOR_CONFIG)
+    return ApplyOutcome(result["status"], result["message"], "glassdoor", url)
 
 
 def apply_greenhouse(page: Page, url: str, profile: dict, resume_path: str) -> ApplyOutcome:
@@ -136,7 +100,7 @@ def apply_greenhouse(page: Page, url: str, profile: dict, resume_path: str) -> A
     logger.info("Greenhouse apply: %s", url)
     page.goto(url, wait_until="domcontentloaded", timeout=60_000)
     page.wait_for_timeout(2000)
-    _guard_captcha(page)
+    _guard_captcha(page, "greenhouse")
 
     # Job description page → click through to application form
     if "greenhouse.io" in page.url and "#app" not in page.url:
@@ -149,7 +113,7 @@ def apply_greenhouse(page: Page, url: str, profile: dict, resume_path: str) -> A
 
     # Custom questions (dropdowns, short text)
     for _ in range(4):
-        _guard_captcha(page)
+        _guard_captcha(page, "greenhouse")
         fill_greenhouse_fields(page, profile)
 
         if click_first_matching(

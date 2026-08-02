@@ -32,6 +32,8 @@ type Props = {
   onDiscoverAndMatch: () => void;
   onPersonalize: (jobId: number) => void;
   onApply: (match: MatchResult) => void;
+  onBotApply?: (match: MatchResult) => void;
+  botRunning?: boolean;
 };
 
 export function WorkflowPanel({
@@ -49,6 +51,8 @@ export function WorkflowPanel({
   onDiscoverAndMatch,
   onPersonalize,
   onApply,
+  onBotApply,
+  botRunning = false,
 }: Props) {
   const passedCount = matches.filter((m) => m.passed_threshold).length;
   const initials = profile?.name
@@ -269,6 +273,15 @@ export function WorkflowPanel({
                   </div>
 
                   <div className="flex shrink-0 flex-wrap gap-2">
+                    {onBotApply && match.apply_url && (
+                      <button
+                        className="btn-dark min-w-[120px]"
+                        disabled={loading || botRunning || appliedIds.has(match.job_id)}
+                        onClick={() => void onBotApply(match)}
+                      >
+                        {botRunning ? "Bot running…" : "Auto apply"}
+                      </button>
+                    )}
                     <button
                       className="btn-outline min-w-[120px]"
                       disabled={loading}
@@ -277,7 +290,7 @@ export function WorkflowPanel({
                       Personalize
                     </button>
                     <button
-                      className="btn-dark min-w-[120px]"
+                      className="btn-outline min-w-[120px]"
                       disabled={loading || appliedIds.has(match.job_id)}
                       onClick={() => void handleApply(match)}
                     >

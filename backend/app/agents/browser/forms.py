@@ -89,6 +89,72 @@ def fill_standard_fields(page: Page, profile: dict) -> int:
             pass
 
     logger.info("Filled %d standard fields", filled)
+    filled += fill_custom_questions(page, profile)
+    return filled
+
+
+def fill_custom_questions(page: Page, profile: dict) -> int:
+    """Fill common screening questions (work auth, sponsorship, experience)."""
+    filled = 0
+    skills = profile.get("skills") or []
+    experience = profile.get("experience") or []
+    years = max(len(experience), 2)
+
+    qa_pairs: list[tuple[str, str]] = [
+        (r"authorized|legally authorized|eligible to work|work authorization", "Yes"),
+        (r"require sponsorship|visa sponsorship|need sponsorship", "No"),
+        (r"willing to relocate", "Yes"),
+        (r"remote|work from home", "Yes"),
+        (r"years?.{0,5}experience|how many years", str(years)),
+        (r"expected salary|desired salary|salary expectation", profile.get("salary_expectation", "Negotiable")),
+        (r"linkedin profile|linkedin url", profile.get("linkedin", "")),
+        (r"github|portfolio|website", profile.get("github", "") or profile.get("portfolio", "")),
+    ]
+
+    for skill in skills[:8]:
+        qa_pairs.append((rf"experience with {re.escape(skill)}|{re.escape(skill)}", "Yes"))
+
+    for pattern, answer in qa_pairs:
+        if not answer:
+            continue
+        try:
+            loc = page.get_by_label(re.compile(pattern, re.I))
+            if loc.count() > 0:
+                tag = loc.first.evaluate("el => el.tagName.toLowerCase()")
+                if tag == "select":
+                    loc.first.select_option(label=re.compile(answer, re.I))
+                    filled += 1
+                elif _try_fill(loc, answer):
+                    filled += 1
+        except Exception:
+            pass
+        try:
+            radio = page.get_by_role("radio", name=re.compile(answer, re.I))
+            if radio.count() > 0 and radio.first.is_visible():
+                radio.first.click()
+                filled += 1
+        except Exception:
+            pass
+
+    # Generic blank required text inputs in modals
+    try:
+        for inp in page.locator("input[required]:not([type='hidden']), textarea[required]").all()[:6]:
+            if not inp.is_visible():
+                continue
+            if inp.input_value():
+                continue
+            placeholder = (inp.get_attribute("placeholder") or "").lower()
+            name = (inp.get_attribute("name") or "").lower()
+            hint = placeholder + " " + name
+            if "year" in hint:
+                inp.fill(str(years))
+                filled += 1
+            elif "city" in hint or "location" in hint:
+                inp.fill(profile.get("location", ""))
+                filled += 1
+    except Exception:
+        pass
+
     return filled
 
 

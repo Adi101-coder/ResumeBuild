@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import applications, events, jobs, matching, resumes
+from app.api.routes import applications, auto_apply, bot, events, jobs, matching, resumes
 from app.config import settings
 from app.database.models import Base
 from app.database.postgres import reset_postgres_sequences
@@ -91,3 +91,5 @@ app.include_router(resumes.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(matching.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
+app.include_router(auto_apply.router, prefix="/api")
+app.include_router(bot.router, prefix="/api")

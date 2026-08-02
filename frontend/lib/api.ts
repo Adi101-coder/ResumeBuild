@@ -231,3 +231,127 @@ export async function getAnalytics(candidateId: number) {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export type AutoApplySession = {
+  platform: string;
+  logged_in: boolean;
+  updated_at: string | null;
+};
+
+export type AutoApplyConfig = {
+  candidate_id: number;
+  job_titles: string[];
+  location: string;
+  resume_uploaded: boolean;
+  resume_filename: string;
+  resume_path: string;
+  updated_at: string | null;
+  sessions?: AutoApplySession[];
+  run_command?: string;
+};
+
+export async function getAutoApplyConfig(candidateId: number) {
+  const res = await apiFetch(`/api/auto-apply/${candidateId}/config`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<AutoApplyConfig>;
+}
+
+export async function updateAutoApplyConfig(
+  candidateId: number,
+  jobTitles: string[],
+  location: string,
+) {
+  const res = await apiFetch(`/api/auto-apply/${candidateId}/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_titles: jobTitles, location }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<AutoApplyConfig>;
+}
+
+export async function uploadAutoApplyResume(candidateId: number, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await apiFetch(`/api/auto-apply/${candidateId}/resume`, {
+    method: "POST",
+    body: form,
+  }, 90_000);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export type BotAvailability = {
+  available: boolean;
+  message: string;
+  platforms: string[];
+};
+
+export type BotEvent = {
+  ts: string;
+  level: string;
+  message: string;
+  result?: Record<string, unknown>;
+};
+
+export type BotStatus = {
+  candidate_id: number;
+  state: "idle" | "running" | "stopping" | "error";
+  available?: boolean;
+  run_id?: string;
+  platform?: string;
+  submitted?: number;
+  failed?: number;
+  skipped?: number;
+  pending?: number;
+  error?: string | null;
+  recent_events?: BotEvent[];
+};
+
+export async function getBotAvailability() {
+  const res = await apiFetch("/api/bot/availability");
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<BotAvailability>;
+}
+
+export async function getBotStatus(candidateId: number) {
+  const res = await apiFetch(`/api/bot/status/${candidateId}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<BotStatus>;
+}
+
+export async function startBot(
+  candidateId: number,
+  opts?: {
+    platform?: string;
+    continuous?: boolean;
+    batchSize?: number;
+    jobUrl?: string;
+    jobId?: number;
+    jobTitle?: string;
+    jobCompany?: string;
+  },
+) {
+  const res = await apiFetch("/api/bot/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      candidate_id: candidateId,
+      platform: opts?.platform ?? "linkedin",
+      continuous: opts?.continuous ?? true,
+      batch_size: opts?.batchSize ?? 5,
+      job_url: opts?.jobUrl,
+      job_id: opts?.jobId,
+      job_title: opts?.jobTitle,
+      job_company: opts?.jobCompany,
+    }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<BotStatus>;
+}
+
+export async function stopBot(candidateId: number) {
+  const res = await apiFetch(`/api/bot/stop/${candidateId}`, { method: "POST" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<BotStatus>;
+}

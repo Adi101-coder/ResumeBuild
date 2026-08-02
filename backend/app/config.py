@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     embedding_fallback: bool = False
     openai_timeout_seconds: float = 25.0
 
+    auto_apply_resumes_path: Path = BASE_DIR / "storage" / "auto_apply"
+
     storage_path: Path = BASE_DIR / "storage"
     templates_path: Path = BASE_DIR / "templates"
     vector_index_path: Path = BASE_DIR / "storage" / "faiss_index"
@@ -75,6 +77,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 settings.storage_path.mkdir(parents=True, exist_ok=True)
+settings.auto_apply_resumes_path.mkdir(parents=True, exist_ok=True)
 (settings.storage_path / "resumes").mkdir(parents=True, exist_ok=True)
 (settings.storage_path / "generated").mkdir(parents=True, exist_ok=True)
 settings.vector_index_path.mkdir(parents=True, exist_ok=True)
